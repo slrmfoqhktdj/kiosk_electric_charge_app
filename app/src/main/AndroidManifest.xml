@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+
+    >
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+
+    <uses-permission android:name="android.permission.INSTALL_PACKAGES"
+        tools:ignore="ProtectedPermissions" />
+
+
+
+<!--    android:testOnly="true"-->
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Kiosk_electric_charger"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
+        android:exported="true"
+        android:excludeFromRecents="true"
+        tools:targetApi="n_mr1"
+        >
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider" />
+        </provider>
+
+        <service
+            android:name=".background.Backgound_service"
+            android:enabled="true"
+            android:exported="true" />
+
+        <!-- 백 그라운드에서 일정 시간 터치가 없으면 보내는 리시버 -->
+        <receiver
+            android:name=".receiver.ADReceiver"
+            android:enabled="true"
+            android:exported="true">
+        </receiver>
+
+        <!-- 백 그라운드에서 일정 시간 마다 리시버로 버전 체크해서 업데이트..? -->
+        <receiver
+            android:name=".receiver.UpdateReceiver"
+            android:enabled="true"
+            android:exported="true"
+            >
+        </receiver>
+
+        <!-- 재시작시  -->
+        <receiver android:name=".receiver.BootCompleteReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="true">
+            <intent-filter>
+                <!-- 부팅시 -->
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <!-- 재시작시 -->
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <!-- 업데이트 완료 시 -->
+                <!--<action android:name="android.intent.action.MY_PACKAGE_REPLACED" />-->
+    </intent-filter>
+</receiver>
+
+<!-- 업데이트 후 다시 켜지게 -->
+        <receiver android:name=".receiver.LauncherReceiver" android:enabled="true" android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.kiosk_electric_charger.action.START"></action>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".receiver.KioskDeviceAdminReceiver"
+            android:description="@string/app_name"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin_receiver"
+                tools:ignore="DeviceAdmin" />
+            <intent-filter>
+                <action android:name="android.intent.action.DEVICE_ADMIN_ENABLED"/>
+            </intent-filter>
+        </receiver>
+
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true" />
+        <activity
+            android:name=".SecondActivity"
+            android:exported="true" />
+        <activity
+            android:name=".adview.AD_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Design.NoActionBar"
+            android:launchMode="singleTask"
+            >
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.HOME"/>
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
