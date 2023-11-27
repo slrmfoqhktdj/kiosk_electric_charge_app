@@ -93,6 +93,8 @@ public class AD_Activity extends AppCompatActivity {
 
 
         imageVideoView.setOnClickListener(v -> {
+            backgound_service.Stop_ad_thread();
+            backgound_service.Start_ad_thread(0);
             finish();
         });
 
@@ -126,8 +128,6 @@ public class AD_Activity extends AppCompatActivity {
         if(imageVideoView != null){
             imageVideoView.releasePlayer();
         }
-
-        backgound_service.Stop_ad_thread();
         if(isService){
             unbindService(conn); // 바인드서비스 종료
             isService = false;

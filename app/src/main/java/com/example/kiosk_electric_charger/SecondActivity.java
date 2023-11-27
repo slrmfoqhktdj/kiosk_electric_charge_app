@@ -7,10 +7,8 @@ import android.content.IntentSender;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 
-import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
@@ -20,20 +18,18 @@ import androidx.appcompat.app.AppCompatActivity;
 
 
 import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
+import com.example.kiosk_electric_charger.activity.Charge_Conn_Activity;
 import com.example.kiosk_electric_charger.filemanage.Filedownload;
 import com.example.kiosk_electric_charger.model.DeviceModel;
-import com.example.kiosk_electric_charger.receiver.ADReceiver;
 import com.example.kiosk_electric_charger.receiver.LauncherReceiver;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_ADModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_ADModel;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_PayModel;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_VersionModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_PayModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_VersionModel;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -53,10 +49,7 @@ import retrofit2.Response;
 public class SecondActivity extends AppCompatActivity {
 
     private final Retrofit_Interface retrofitService = Retrofit_Factory.create();
-    Button charger_btn ;
-    Button advertise_list_down_btn ;
-    Button app_update_btn ;
-    Button pay_btn ;
+    Button charger_btn , advertise_list_down_btn ,app_update_btn ,pay_btn ,simul_btn;
     TextView version_tv;
 
 
@@ -70,7 +63,7 @@ public class SecondActivity extends AppCompatActivity {
 
         if (requestCode == SEND_REQUEST_CHKVALID ) {
             // 요청 정상
-            if (resultCode != RESULT_OK) {
+            if (resultCode == RESULT_OK) {
 
                 int return_value = data.getIntExtra("NVCATRETURNCODE",-99);
                 String return_data = data.getStringExtra("NVCATRECVDATA");
@@ -87,7 +80,7 @@ public class SecondActivity extends AppCompatActivity {
             }
         }else if(requestCode == SEND_REQUEST_NORMAL ){
             // 요청 정상
-            if (resultCode != RESULT_OK) {
+            if (resultCode == RESULT_OK) {
 
                 int return_value = data.getIntExtra("NVCATRETURNCODE",-99);
                 String return_data = data.getStringExtra("NVCATRECVDATA");
@@ -100,9 +93,15 @@ public class SecondActivity extends AppCompatActivity {
                 Log.d("NVCAT err",return_value + " "+return_data);
                 // 예외처리
             }else{
-                Log.d("NVCAT err","예외");
+                int return_value = data.getIntExtra("NVCATRETURNCODE",-99);
+                String return_data = data.getStringExtra("NVCATRECVDATA");
+                Log.d("NVCAT err","예외 "+ resultCode + " "+return_value + " "+return_data);
             }
         }else{
+            int return_value = data.getIntExtra("NVCATRETURNCODE",-99);
+            String return_data = data.getStringExtra("NVCATRECVDATA");
+            Log.d("NVCAT exception",resultCode + " "+return_value + " "+return_data);
+
 
         }
         
@@ -113,14 +112,13 @@ public class SecondActivity extends AppCompatActivity {
     }
 
     //리더기 상호인증 요청
-    private final int SEND_REQUEST_CHKVALID  = 100;
+    private final int SEND_REQUEST_CHKVALID  = 2;
     
     //,nvcat 재시작,강제종료 요청, 리더기 정보요청,환경설정,카드삽입여부,파일권한 허용요청,RF잔액조회 및 카드번호 요청,사용자 선택버튼기능 요청
-    private final int SEND_REQUEST_NORMAL = 200;
+    private final int SEND_REQUEST_NORMAL = 6;
     
     //POS에서 NVCAT으로 결제요청
-    private final int SEND_REQUEST_CODE = 300;
-
+    private final int SEND_REQUEST_CODE = 1;
 
     //    카드리더기 상호인증 요청
     public void Check_CardReaderDevice(){
@@ -158,9 +156,32 @@ public class SecondActivity extends AppCompatActivity {
         startActivityForResult(intent,SEND_REQUEST_NORMAL);
     }
 
+    private final char fs = 0x1C;
+    String pay_select = "0200";     // 거래구분     - 4
+    String pay_category = "10";     // 거래 유형    - 2
+    String pay_WCC = "I";           // WCC  - 1
+    String pay_value = "1003" ;     // 거래금액 - V(12)
+    String pay_bugase = "0" ;    // 부가세 - V(12)
+    String pay_bongsa = "0" ;    // 봉사료 - V(12)
+    String pay_halbu = "03";            // 할부개월 - 2
+    String pay_apprtid = "2393300001";            // 승인시 catid - 10
+    String pay_myunse = "000000000";        // 면세금액 - V(9)
+    String pay_prvnum = "00000000000000000001";         // POS 자체 전문관리번호    - 20
+    String pay_filler = "ABCDEFGHIJKLNMOPQRSTUVWXYZABCDE";             // filler - V(31)
+    String pay_txt = "PRO";             // 전문TEXT - V(3)
+    String pay_devicegb = "H1";         // 기종구분 - V(2)
+
+
     //POS에서 NVCAT으로 결제 요청
     public void Request_Pay(){
-
+        String senddata = "";
+//        senddata = pay_select + fs + pay_category + fs + pay_WCC + fs + pay_value + fs + pay_bugase + fs + pay_bongsa + fs + pay_halbu + fs + fs + fs + pay_apprtid + fs + fs + fs + fs + pay_myunse + fs + fs + fs + pay_prvnum + fs + pay_filler + fs + fs + pay_txt + fs + pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        senddata = pay_select + fs + pay_category + fs + pay_WCC + fs + pay_value + fs + pay_bugase + fs + pay_bongsa + fs + pay_halbu + fs + fs + fs + pay_apprtid + fs + fs + fs + fs + pay_myunse + fs + fs + fs + pay_prvnum + fs + fs + fs + pay_txt + fs + pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        Intent intent = new Intent();
+        intent.setAction("NICEVCAT");
+        intent.putExtra("NVCATSENDDATA",senddata);
+        intent.setType("text/plain");
+        startActivityForResult(intent,SEND_REQUEST_CODE);
     }
 
     //NVCAT 강제종료 요청
@@ -195,6 +216,8 @@ public class SecondActivity extends AppCompatActivity {
 
 
 
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -216,6 +239,7 @@ public class SecondActivity extends AppCompatActivity {
         advertise_list_down_btn = findViewById(R.id.second_btn02);
         app_update_btn = findViewById(R.id.second_btn03);
         pay_btn = findViewById(R.id.second_btn04);
+        simul_btn = findViewById(R.id.second_btn05);
 
         version_tv = findViewById(R.id.second_version_tv);
         version_tv.setText(versionName);
@@ -224,17 +248,13 @@ public class SecondActivity extends AppCompatActivity {
 
 
         charger_btn.setOnClickListener(v -> {
-            //됨
-//            Check_CardReaderDevice();     --  -16 리더기 오류
-//            NVCAT_Restart();              --- 해당 페이지가 하나 더 떠서 터치가 막힘.
-//            Request_CardReader_Info();    --  -16 리더기 오류
 
+//            Check_CardReaderDevice();   //     --  -16 리더기 오류
+//            NVCAT_Restart();            //  --- 예외부분에서 뜸.  -1 1 정상
+//            Request_CardReader_Info();   // --  -16 리더기 오류
+//            Check_Card_Input();           // --- -1 1 N
+            Request_Pay();
 
-
-
-            //안됨
-//            User_Interface_Window();      -- -14 오류
-//            Check_Card_Input();           --- 해당 페이지가 하나 더 떠서 터치가 막힘. 반환안됨. 리더기 달아봐야함
         });
 
 
@@ -373,6 +393,14 @@ public class SecondActivity extends AppCompatActivity {
                     Log.d("fail",t.getMessage());
                 }
             });
+        });
+
+
+
+        simul_btn.setOnClickListener(v ->{
+            Intent intent = new Intent(SecondActivity.this, Charge_Conn_Activity.class);
+            startActivity(intent);
+            finish();
         });
 
     }

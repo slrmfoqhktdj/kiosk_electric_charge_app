@@ -66,6 +66,7 @@ public class ImageVideoView extends LinearLayout {
         params.gravity = Gravity.CENTER;
         videoView = new VideoView(mContext);
         videoView.setLayoutParams(params);
+
         addView(videoView);
         videoView.setVideoURI(Uri.fromFile(new File(url)));
         videoView.setOnPreparedListener(mp -> mp.start());

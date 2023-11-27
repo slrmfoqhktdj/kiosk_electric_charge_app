@@ -1,4 +1,4 @@
-package com.example.kiosk_electric_charger.retrofit;
+package com.example.kiosk_electric_charger.retrofit.Model;
 
 public class Retrofit_VersionModel {
     private  String Version;

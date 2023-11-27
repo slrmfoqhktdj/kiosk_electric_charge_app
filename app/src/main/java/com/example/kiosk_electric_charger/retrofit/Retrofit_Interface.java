@@ -1,5 +1,9 @@
 package com.example.kiosk_electric_charger.retrofit;
 
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_ADModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_PayModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_VersionModel;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -55,6 +59,26 @@ public interface Retrofit_Interface {
             @FieldMap HashMap<String,String> param
     );
 
+    //결제내역 보내기
+    @FormUrlEncoded
+    @POST("pay/history")
+    Call<ResponseBody> sendPayHistory(
+            @FieldMap HashMap<String,String> param
+    );
+
+    //충전 시작시간 보내기
+    @FormUrlEncoded
+    @POST("charging/start")
+    Call<ResponseBody> sendCStart(
+            @FieldMap HashMap<String,String> param
+    );
+
+    //충전 종료시간 보내기
+    @FormUrlEncoded
+    @POST("charging/end")
+    Call<ResponseBody> sendCEnd(
+            @FieldMap HashMap<String,String> param
+    );
 
 }
 

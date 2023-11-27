@@ -16,6 +16,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Button;
@@ -23,6 +24,8 @@ import android.widget.TimePicker;
 import android.widget.Toast;
 
 import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
+import com.example.kiosk_electric_charger.activity.Charge_Conn_Activity;
+import com.example.kiosk_electric_charger.activity.Expected_Amount_Activity;
 import com.example.kiosk_electric_charger.background.Backgound_service;
 import com.example.kiosk_electric_charger.receiver.ADReceiver;
 import com.example.kiosk_electric_charger.receiver.LauncherReceiver;
@@ -59,10 +62,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private BroadcastReceiver mReceiver;
-
-//    private LauncherReceiver lReceiver;
-
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override
@@ -70,26 +69,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        
+        Log.d("main","onCreate");
 
         main_btn = findViewById(R.id.main_next_btn);
 
-        //SharedPreferences 등록
-        PrefsHelper.init(this);
-
-
-        //광고 액티비티 띄우는 리시버 등록
-        mReceiver = new ADReceiver();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ADReceiver.ADAction);
-        this.registerReceiver(mReceiver,filter);
-
-//        lReceiver = new LauncherReceiver();
-//        IntentFilter filter1 = new IntentFilter();
-//        filter.addAction(LauncherReceiver.START_INTENT);
-////        filter.addDataScheme("package");
-//        this.registerReceiver(lReceiver,filter1);
 
         // 업데이트 알람 매니저 초기화
         alarmManager = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
@@ -108,61 +91,50 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
         main_btn.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, SecondActivity.class);
+            backgound_service.Stop_ad_thread();
+            Intent intent = new Intent(MainActivity.this, Charge_Conn_Activity.class);
             startActivity(intent);
-
-
-            // 광고 타이머 시작
-//            backgound_service.Start_ad_thread();
-
-
         });
+
+
 
         // 업데이트 알람 등록
         Updateregist();
 
-        
-        // 관리자 권한 부여 --- 안되는것같기도하고
-        DevicePolicyManager dpm =
-                (DevicePolicyManager)getSystemService(Context.DEVICE_POLICY_SERVICE);
 
-        ComponentName componentName = new ComponentName(this, MainActivity.class);
-
-        if(!dpm.isAdminActive(componentName)){
-            Log.d("admin","No");
-            enableAdmin(componentName);
-        }
-
-        // 소유자 권한 제거
-//        dpm.clearDeviceOwnerApp(this.getPackageName());
 
 
 
 
     }
-    private void enableAdmin(ComponentName componentName) {
-//        if (isDeviceAdminApp()) {
-//            return;
-//        }
 
-        Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName);
-        // Start the add device admin activity
-        startActivity(intent);
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d("main","onPause");
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
 
+        //텀을 줘야함
+        new Handler().postDelayed(() -> {
+            // 광고 타이머 시작
+            backgound_service.Start_ad_thread(0);
+        },1000);
 
+        Log.d("main","onResume");
+    }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         PrefsHelper.destroyPref();
-        unregisterReceiver(mReceiver);
-//        unregisterReceiver(lReceiver);
+        unregist();
         if(isService){
             unbindService(conn); // 서비스 종료
             stopService(service_intent);
@@ -206,6 +178,8 @@ public class MainActivity extends AppCompatActivity {
         PendingIntent pIntent = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         alarmManager.cancel(pIntent);
     }//
+
+
 
 
 }

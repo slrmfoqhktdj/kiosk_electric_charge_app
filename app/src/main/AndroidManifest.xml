@@ -35,6 +35,8 @@
         android:requestLegacyExternalStorage="true"
         android:exported="true"
         android:excludeFromRecents="true"
+        android:hardwareAccelerated="false"
+        android:largeHeap="true"
         tools:targetApi="n_mr1"
         >
         <provider
@@ -57,6 +59,10 @@
             android:name=".receiver.ADReceiver"
             android:enabled="true"
             android:exported="true">
+            <intent-filter>
+                <action android:name="Show.AD.Activity"/>
+                <action android:name="Move.Main.Activity" />
+            </intent-filter>
         </receiver>
 
         <!-- 백 그라운드에서 일정 시간 마다 리시버로 버전 체크해서 업데이트..? -->
@@ -79,8 +85,8 @@
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <!-- 업데이트 완료 시 -->
                 <!--<action android:name="android.intent.action.MY_PACKAGE_REPLACED" />-->
-    </intent-filter>
-</receiver>
+            </intent-filter>
+        </receiver>
 
 <!-- 업데이트 후 다시 켜지게 -->
         <receiver android:name=".receiver.LauncherReceiver" android:enabled="true" android:exported="true">
@@ -109,13 +115,38 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:launchMode="singleTask"/>
         <activity
             android:name=".SecondActivity"
             android:exported="true" />
         <activity
             android:name=".adview.AD_Activity"
             android:exported="true" />
+        <activity
+            android:name=".activity.Card_Read_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".activity.Charge_Complete_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".activity.Charge_Conn_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".activity.Charging_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".activity.Expected_Amount_Activity"
+            android:exported="true" />
+        <activity
+            android:name=".activity.Installments_Setting_Activity"
+            android:exported="true" />
+
+        <activity
+            android:name=".FirstSettingActivity"
+            android:exported="true" />
+
+
         <activity
             android:name=".SplashActivity"
             android:exported="true"
