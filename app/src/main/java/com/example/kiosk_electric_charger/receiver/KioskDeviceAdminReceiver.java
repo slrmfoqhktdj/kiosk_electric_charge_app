@@ -7,7 +7,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class KioskDeviceAdminReceiver extends DeviceAdminReceiver {
-    static final String TAG = "SIMPLE_KIOSK";
+    private static final String TAG = KioskDeviceAdminReceiver.class.getSimpleName();
 
     @Override
     public void onReceive(Context context, Intent intent) {

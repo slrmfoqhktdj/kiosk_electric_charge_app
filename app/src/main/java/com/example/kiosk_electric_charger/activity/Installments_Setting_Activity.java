@@ -110,11 +110,10 @@ public class Installments_Setting_Activity extends AppCompatActivity {
             finish();
         });
 
-
         //bindservice와 틈을 주기 위해
         new Handler().postDelayed(() -> {
             // 광고 타이머 시작
-            backgound_service.Start_ad_thread(1);
+            backgound_service.Start_ad_thread();
         },1000);
 
     }
@@ -128,7 +127,7 @@ public class Installments_Setting_Activity extends AppCompatActivity {
 
         //시간 초기화
         backgound_service.Stop_ad_thread();
-        backgound_service.Start_ad_thread(1);
+        backgound_service.Start_ad_thread();
 
         if(i == R.id.installments_01){
             Inst_result = "00";

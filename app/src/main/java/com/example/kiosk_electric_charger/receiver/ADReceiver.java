@@ -16,7 +16,6 @@ import java.util.Objects;
 
 public class ADReceiver extends BroadcastReceiver {
     public final static String ADAction = "Show.AD.Activity";
-    public final static String MPAction = "Move.Main.Activity";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -29,15 +28,7 @@ public class ADReceiver extends BroadcastReceiver {
             Log.d("Receive", "광고");
             Intent adactivity = new Intent(context, AD_Activity.class);
             context.startActivity(adactivity);
-        }else if(Objects.equals(intent.getAction(), MPAction)){
-            Log.d("Receive", "메인으로");
-            Intent adactivity = new Intent(context, MainActivity.class);
-            //기존에 있는 해당 액티비티 위에 있는 모든 액티비티를 제거하고 호출
-//            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | FLAG_ACTIVITY_SINGLE_TOP);
-            context.startActivity(adactivity);
         }
-
 
     }
 }

@@ -129,7 +129,7 @@ public class Expected_Amount_Activity extends AppCompatActivity {
         //bindservice와 틈을 주기 위해
         new Handler().postDelayed(() -> {
             // 광고 타이머 시작
-            backgound_service.Start_ad_thread(1);
+            backgound_service.Start_ad_thread();
         },1000);
 
     }

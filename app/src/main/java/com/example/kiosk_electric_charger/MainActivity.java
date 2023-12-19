@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         //텀을 줘야함
         new Handler().postDelayed(() -> {
             // 광고 타이머 시작
-            backgound_service.Start_ad_thread(0);
+            backgound_service.Start_ad_thread();
         },1000);
 
         Log.d("main","onResume");

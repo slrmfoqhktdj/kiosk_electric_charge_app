@@ -59,7 +59,7 @@ public class Charge_Complete_Activity extends AppCompatActivity {
                 Context.BIND_AUTO_CREATE);
 
         new Handler().postDelayed(() -> {
-            backgound_service.Start_ad_thread(1,2500);
+            backgound_service.Start_ad_thread();
         },1000);
 
 

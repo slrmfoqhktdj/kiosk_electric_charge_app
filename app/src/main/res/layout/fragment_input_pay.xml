@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".fragment.InputPayFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/input_pay_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/input_pay_fragment_left_bg"
+            >
+
+
+            <TextView
+                android:id="@+id/pay_tv"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_text_box"
+
+                android:gravity="center"
+                android:textStyle="bold"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.495"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.377"
+
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".04"
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".16"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <TextView
+                android:id="@+id/amount_tv"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_text_box"
+
+                android:gravity="center"
+                android:textStyle="bold"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.495"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.442"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".16"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".04"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <TextView
+                android:id="@+id/value_tv"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_text_box"
+
+                android:gravity="center"
+                android:textStyle="bold"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.495"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.506"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".16"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".04"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_next_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_pay_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.86"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.442"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".18"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".13"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+
+
+
+
+
+
+
+
+            <ImageButton
+                android:id="@+id/pay_500_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_500_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.35"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.66"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_1000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_1000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.525"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.66"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_2000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_2000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.7"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.66"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_3000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_3000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.875"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.66"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+
+
+
+
+
+
+
+
+
+            <ImageButton
+                android:id="@+id/pay_4000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_4000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.35"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.83"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_5000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_5000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.525"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.83"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_10000_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_10000_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.7"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.83"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+            <ImageButton
+                android:id="@+id/pay_reset_btn"
+
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/input_pay_fragment_reset_btn"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.875"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.83"
+
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".11"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".14"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+
+
+
+
+
+
+
+
+
+            <ImageButton
+                android:id="@+id/back_btn"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@drawable/bottomarrow_left"
+
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.95"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.95"
+                app:layout_constraintHeight_default="percent"
+                app:layout_constraintHeight_percent=".1"
+                app:layout_constraintWidth_default="percent"
+                app:layout_constraintWidth_percent=".1"
+
+                tools:ignore="SpeakableTextPresentCheck" />
+
+
+
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

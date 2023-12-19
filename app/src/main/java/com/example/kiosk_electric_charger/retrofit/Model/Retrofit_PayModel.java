@@ -6,13 +6,13 @@ import com.google.gson.annotations.SerializedName;
 public class Retrofit_PayModel {
 
 //    @SerializedName("Pay")
-    private  int Pay;
+    private float Pay;
 
-    public int getPay(){
+    public float getPay(){
         return Pay;
     }
 
-    public void setPay(int pay){
+    public void setPay(float pay){
         this.Pay = pay;
     }
 }

@@ -10,22 +10,29 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.util.TimeUtils;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.VideoView;
 
 import androidx.annotation.Nullable;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.kiosk_electric_charger.MainActivity;
+import com.example.kiosk_electric_charger.R;
 import com.example.kiosk_electric_charger.SplashActivity;
+
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
-public class ImageVideoView extends LinearLayout {
+public class ImageVideoView extends ConstraintLayout {
 
     Context mContext;
 //    CustomExoPlayerView customExoPlayerView;
@@ -52,22 +59,70 @@ public class ImageVideoView extends LinearLayout {
 
     private void initView(Context context) {
         mContext = context;
-        setBackgroundColor(Color.BLACK);
+        setBackgroundColor(Color.TRANSPARENT);
 
+
+        
+
+
+        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+
+        videoView = new VideoView(mContext);
+        imageView = new ImageView(mContext);
+
+        videoView.setId(View.generateViewId());
+        imageView.setId(View.generateViewId());
+
+        videoView.setLayoutParams(params);
+//        imageView.setLayoutParams(params);            // 이 설정을 하면 화면에 imageview가 안나와버림.. 왜그러지
+
+        addView(imageView);
+        addView(videoView);
+
+        //자식 세부설정 
+        ConstraintSet set = new ConstraintSet();
+
+        set.clone(this);
+        set.setHorizontalBias(videoView.getId(), 0.5F);
+        set.setHorizontalBias(imageView.getId(), 0.5F);
+        set.applyTo(this);
+
+
+        
+
+        // LinearLayout 일때
+
+//        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+//
+//        //가운데 정렬
+//        params.gravity = Gravity.CENTER;
+//
+//        videoView = new VideoView(mContext);
+//        imageView = new ImageView(mContext);
+//
+//        videoView.setLayoutParams(params);
+//        imageView.setLayoutParams(params);
+//
+//        addView(imageView);
+//        addView(videoView);
     }
 
     //url이 비디오 형식일 경우
     public void setUrlVideo(String url) {
         //앞의 진행되던 뷰 지우기
-        removeAllViews();
+//        removeAllViews();
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        //가운데 정렬
-        params.gravity = Gravity.CENTER;
-        videoView = new VideoView(mContext);
-        videoView.setLayoutParams(params);
+//        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+//        //가운데 정렬
+//        params.gravity = Gravity.CENTER;
+//        videoView = new VideoView(mContext);
+//        videoView.setLayoutParams(params);
+//
+//        addView(videoView);
 
-        addView(videoView);
+        imageView.setVisibility(View.GONE);
+
+        videoView.setVisibility(View.VISIBLE);
         videoView.setVideoURI(Uri.fromFile(new File(url)));
         videoView.setOnPreparedListener(mp -> mp.start());
 
@@ -78,14 +133,18 @@ public class ImageVideoView extends LinearLayout {
     //url이 이미지 형식일 경우 imageview load
     public void setUrlImage(String url) {
         //앞의 진행되던 뷰 지우기
-        removeAllViews();
+//        removeAllViews();
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        //가운데 정렬
-        params.gravity = Gravity.CENTER;
-        imageView = new ImageView(mContext);
-        imageView.setLayoutParams(params);
-        addView(imageView);
+//        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+//        //가운데 정렬
+//        params.gravity = Gravity.CENTER;
+//        imageView = new ImageView(mContext);
+//        imageView.setLayoutParams(params);
+//        addView(imageView);
+
+        videoView.setVisibility(View.GONE);
+
+        imageView.setVisibility(View.VISIBLE);
         Glide.with(this).load(url).diskCacheStrategy(DiskCacheStrategy.AUTOMATIC).into(imageView);
 
     }

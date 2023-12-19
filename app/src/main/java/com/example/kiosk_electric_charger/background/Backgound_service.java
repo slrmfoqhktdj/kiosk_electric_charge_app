@@ -14,17 +14,19 @@ import androidx.annotation.Nullable;
 
 import com.example.kiosk_electric_charger.receiver.ADReceiver;
 
+
 public class Backgound_service extends Service {
 
     private final IBinder mBinder = new LocalBinder();
 
-    private final long AD_time = 5000;
-
-    private final long To_Main_time = 5000;
+    private final long AD_time = 600000;
 
     private Thread ad_thread;
 
+
     private Handler ad_handler;
+
+
 
     public class LocalBinder extends Binder {
         public Backgound_service getService() {
@@ -47,7 +49,8 @@ public class Backgound_service extends Service {
 
         ad_handler = new Handler(Looper.getMainLooper());
 
-        return START_STICKY;
+
+        return START_REDELIVER_INTENT;
     }
 
     @Override
@@ -67,63 +70,23 @@ public class Backgound_service extends Service {
     }
 
 
-    private void sendMainReceiver(){
-        Intent intent = new Intent(ADReceiver.MPAction);
-        sendBroadcast(intent);
-        Log.d("background","sendMainReceiver");
-        Stop_ad_thread();
-    }
 
-    public void Start_ad_thread(int type){
+    public void Start_ad_thread() {
 
 
-        if (type == 0) {    //메인 페이지일때 광고
-            if (ad_thread == null) {
-                ad_thread = new Thread(() -> ad_handler.postDelayed(() -> {
-                    Log.d("background","Start_ad_thread 1");
-                    sendADReceiver();
-                }, AD_time));
+        if (ad_thread == null) {
+            ad_thread = new Thread(() -> ad_handler.postDelayed(() -> {
+                Log.d("background", "Start_ad_thread 1");
+                sendADReceiver();
+            }, AD_time));
 
-                ad_thread.start();
-            }
-        } else {
-            if (ad_thread == null) {
-                ad_thread = new Thread(() -> ad_handler.postDelayed(() -> {
-                    Log.d("background","Start_md_thread 1");
-                    sendMainReceiver();
+            ad_thread.start();
 
-                }, To_Main_time));
-
-                ad_thread.start();
-            }
         }
     }
 
 
 
-
-    public void Start_ad_thread(int type,long time){
-
-        if (type == 0) {    //메인 페이지일때 광고
-            if (ad_thread == null) {
-                ad_thread = new Thread(() -> ad_handler.postDelayed(() -> {
-                    sendADReceiver();
-                },  time));
-
-                ad_thread.start();
-            }
-        } else {
-            if (ad_thread == null) {
-                ad_thread = new Thread(() -> ad_handler.postDelayed(() -> {
-                    sendMainReceiver();
-//                    // 메인 이동 이후 일정 시간 후에 ad_activity 실행
-//                    Start_ad_thread(0);
-                },  time));
-
-                ad_thread.start();
-            }
-        }
-    }
 
     public void Stop_ad_thread() {
         if (ad_thread != null){
