@@ -54,6 +54,8 @@ public class SplashActivity extends AppCompatActivity {
 
     int downlistlenght = 0;
     int downcomplete = 0;
+    
+    boolean bootnotification_b = false; // 부트노티 승인
 
 
     boolean down_setting_com = false;
@@ -72,11 +74,11 @@ public class SplashActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             int interval = intent.getIntExtra("interval",60);
-            boolean Status = intent.getBooleanExtra("status",false);
+            bootnotification_b = intent.getBooleanExtra("status",false);
 
-            Log.d(tag,"boot notification - "+interval + " "+ Status);
+            Log.d(tag,"boot notification - "+interval + " "+ bootnotification_b);
 
-            mClient.disconnect();
+//            mClient.disconnect();
 
 //            sendFileList();
 
@@ -189,7 +191,7 @@ public class SplashActivity extends AppCompatActivity {
         svv.stopPlayback();
         unregisterReceiver(bootNotificationReceiver);    // 부팅
 
-        mClient.disconnect();           // ws 연결 끊고
+//        mClient.disconnect();           // ws 연결 끊고
         mClient = null;
         
     }
@@ -257,38 +259,53 @@ public class SplashActivity extends AppCompatActivity {
             public void onResponse(Call<List<Retrofit_ADModel>> call, Response<List<Retrofit_ADModel>> response) {
                 if(response.isSuccessful()){
 
-
-
-
                     //받아온 광고 리스트 화
                     List<String> ad_list = new ArrayList<>();
 
-                    //받아온 리스트
+                    try{
+                        //받아온 리스트
 //                    for(Retrofit_ADModel retrofitadModel : response.body()){
-                    for(int s = 0; s < response.body().size()-1 ; s++){
+                        for(int s = 0; s < response.body().size()-1 ; s++){
 
-                        Retrofit_ADModel retrofitadModel = response.body().get(s);
+                            Retrofit_ADModel retrofitadModel = response.body().get(s);
 
 
-                        //받아온 리스트 스트링으로 담기
-                        ad_list.add(retrofitadModel.getADid());
+                            //받아온 리스트 스트링으로 담기
+                            ad_list.add(retrofitadModel.getADid());
+
+                            // 해당 기기에 파일이 있는지 확인
+                            boolean r = f_list.contains(retrofitadModel.getADid());
+
+                            //없으면 다운로드
+                            if(!r){
+                                down_AD_file(retrofitadModel.getADid());
+
+                                //다운 리스트 길이
+                                downlistlenght ++;
+
+                            }
+
+                            Log.d(tag,"success " + retrofitadModel.getADid()+ " "+ r);
+
+
+                        }
+                    }catch (Exception e){           // 배당 받은 광고가 없을 경우
+                        e.printStackTrace();
 
                         // 해당 기기에 파일이 있는지 확인
-                        boolean r = f_list.contains(retrofitadModel.getADid());
+                        boolean r = f_list.contains("adex01.mp4");      // 기본광고
 
                         //없으면 다운로드
                         if(!r){
-                            down_AD_file(retrofitadModel.getADid());
+                            down_AD_file("adex01.mp4");     // 기본광고
 
                             //다운 리스트 길이
                             downlistlenght ++;
 
                         }
-
-                        Log.d(tag,"success " + retrofitadModel.getADid()+ " "+ r);
-
-
                     }
+
+
 
                     // 그외 다른 파일 삭제
                     extra_file_remove(f_list, ad_list);
@@ -373,8 +390,13 @@ public class SplashActivity extends AppCompatActivity {
     private void nextActivity(){
         Log.d(tag, "go to CenterActivity");
 
-        Intent intent = new Intent(SplashActivity.this, CenterActivity.class);
-        startActivity(intent);
+        if(bootnotification_b){
+            Intent intent = new Intent(SplashActivity.this, CenterActivity.class);
+            startActivity(intent);
+        }else{
+            Toast.makeText(this,"서버와의 통신이 되질 않습니다.",Toast.LENGTH_LONG).show();
+        }
+
         finish();
     }
 

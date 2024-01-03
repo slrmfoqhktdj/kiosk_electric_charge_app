@@ -1,5 +1,7 @@
 package com.example.kiosk_electric_charger.ws;
 
+import static eu.chargetime.ocpp.JSONConfiguration.PING_INTERVAL_PARAMETER;
+
 import com.example.kiosk_electric_charger.model.DeviceModel;
 
 import eu.chargetime.ocpp.*;
@@ -31,13 +33,17 @@ public class JsonClientTest implements IClientAPI {
     public JsonClientTest (ClientCoreProfile coreProfile) {
         draftOcppOnly =
                 new Draft_6455(Collections.emptyList(), Collections.singletonList(new Protocol("ocpp1.6")));
-        transmitter = new WebSocketTransmitter(JSONConfiguration.get(), draftOcppOnly);
+        // pingpong 20초 설정
+        transmitter = new WebSocketTransmitter(JSONConfiguration.get().setParameter(PING_INTERVAL_PARAMETER, 20), draftOcppOnly);
         JSONCommunicator communicator = new JSONCommunicator(transmitter);
         featureRepository = new FeatureRepository();
         ISession session = new TestSessionFactory(featureRepository).createSession(communicator);
-
         client = new Client(session, featureRepository,new PromiseRepository());
         featureRepository.addFeatureProfile(coreProfile);
+
+
+
+
     }
 
 

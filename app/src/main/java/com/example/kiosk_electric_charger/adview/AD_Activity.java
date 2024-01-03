@@ -103,8 +103,9 @@ public class AD_Activity extends AppCompatActivity {
 
 
         ad_out_btn.setOnClickListener(v-> {
-            AD_Activity.this.finish();                  // 광고 창 닫기
             ad_dialog.dismiss();                        // 창 닫기
+            AD_Activity.this.finish();                  // 광고 창 닫기
+
         });
 
         ad_dialog.show();

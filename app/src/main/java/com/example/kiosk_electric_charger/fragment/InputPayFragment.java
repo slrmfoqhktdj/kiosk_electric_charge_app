@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.kiosk_electric_charger.R;
 import com.example.kiosk_electric_charger.model.MainViewModel;
@@ -79,23 +80,29 @@ public class InputPayFragment extends Fragment {
         pay_next_btn = view.findViewById(R.id.pay_next_btn);    //결제 버튼
         pay_next_btn.setOnClickListener(v -> {
 
-            if(pre_charge_amount != 0f && value_pay != 0){          // 값들이 0이 아니면
+            if(viewModel.getPayPrice().getValue() != 0f){       // 시세값이 0이 아니면
+                if(pre_charge_amount != 0f && value_pay != 0){          // 값들이 0이 아니면
 
 
-                Intent intent = new Intent("Page");
-                if(Type){
-                    viewModel.getleft_pre_charge_amount().setValue(pre_charge_amount);
-                    viewModel.getleft_payValue().setValue(value_pay);
+                    Intent intent = new Intent("Page");
+                    if(Type){
+                        viewModel.getleft_pre_charge_amount().setValue(pre_charge_amount);
+                        viewModel.getleft_payValue().setValue(value_pay);
 
-                    intent.putExtra("page", PageAddrModel.PayFgm_l);
+                        intent.putExtra("page", PageAddrModel.PayFgm_l);
+                    }else{
+                        viewModel.getright_pre_charge_amount().setValue(pre_charge_amount);
+                        viewModel.getright_payValue().setValue(value_pay);
+
+                        intent.putExtra("page", PageAddrModel.PayFgm_r);
+                    }
+
+                    getActivity().sendBroadcast(intent);
                 }else{
-                    viewModel.getright_pre_charge_amount().setValue(pre_charge_amount);
-                    viewModel.getright_payValue().setValue(value_pay);
-
-                    intent.putExtra("page", PageAddrModel.PayFgm_r);
+                    Toast.makeText(getActivity(),"결제금액은 0원이 될 수 없습니다.",Toast.LENGTH_LONG).show();
                 }
-
-                getActivity().sendBroadcast(intent);
+            }else{
+                Toast.makeText(getActivity(),"전기값을 알수없습니다.",Toast.LENGTH_LONG).show();
             }
             
             

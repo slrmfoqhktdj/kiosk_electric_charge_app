@@ -4,23 +4,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.PowerManager;
 import android.util.Log;
+import android.widget.Toast;
 
-import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
 import com.example.kiosk_electric_charger.model.DeviceModel;
-import com.example.kiosk_electric_charger.model.PageAddrModel;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import eu.chargetime.ocpp.IClientAPI;
 import eu.chargetime.ocpp.feature.profile.ClientCoreEventHandler;
@@ -63,6 +60,9 @@ public class JsonClient {
     private static JsonClient jsonClient = null;
 
     private Context mcontext;
+
+    private int TransactionStartMessageAttempts = 0;
+    private int TransactionStopMessageAttempts = 0;
 
     private JsonClient(Context context){
         mcontext = context;
@@ -140,6 +140,15 @@ public class JsonClient {
                 Log.d(tag,"handleRemoteStartTransactionRequest : "+request);
                 // ... handle event
 
+
+
+                if(request.getIdTag().equals(DeviceModel.getDeviceid())){
+                    Intent intent = new Intent("remote_Start_Charge_Receiver");
+                    intent.putExtra("connector_id",request.getConnectorId());
+
+                    mcontext.sendBroadcast(intent);
+                }
+
                 return null; // returning null means unsupported feature
             }
 
@@ -149,6 +158,10 @@ public class JsonClient {
                 Log.d(tag,"handleRemoteStopTransactionRequest : "+request);
                 // ... handle event
 
+                Intent intent = new Intent("ChargeTimer");
+                intent.putExtra("pay_num",request.getTransactionId());
+                mcontext.sendBroadcast(intent);
+
                 return null; // returning null means unsupported feature
             }
 
@@ -157,6 +170,9 @@ public class JsonClient {
 
                 Log.d(tag,"handleResetRequest : "+request);
                 // ... handle event
+                // 어플 재부팅
+                PowerManager pm = (PowerManager) mcontext.getSystemService(Context.POWER_SERVICE);
+                pm.reboot(null);
 
                 return null; // returning null means unsupported feature
             }
@@ -174,7 +190,11 @@ public class JsonClient {
 
         });
 //        client = new JSONClient(core);
+
+
         client = new JsonClientTest(core);
+
+
 
 
         client.connect("ws://192.168.0.7:8999/ws", null);
@@ -188,6 +208,49 @@ public class JsonClient {
         // Client returns a promise which will be filled once it receives a confirmation.
         client.send(request).whenComplete((s, ex) -> {
             Log.d(tag,"AuthorizeConfirm receive : "+s);
+
+            AuthorizeConfirmation a = (AuthorizeConfirmation) s;
+
+            if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
+                Intent intent = new Intent("authorize_Receive");       // 권한획득
+                mcontext.sendBroadcast(intent);
+
+            }else{
+                Toast.makeText(mcontext,"허가를 받지않은 기기에서 충전을 시도했습니다.",Toast.LENGTH_LONG).show();
+            }
+//            client.disconnect();
+
+
+        });
+    }
+
+
+    public void sendStopAuthorize(int idtag) throws Exception  {
+
+
+        // Use the feature profile to help create event
+        Request request = core.createAuthorizeRequest(String.valueOf(idtag));
+
+        // Client returns a promise which will be filled once it receives a confirmation.
+        client.send(request).whenComplete((s, ex) -> {
+            Log.d(tag,"AuthorizeConfirm receive : "+s);
+
+            AuthorizeConfirmation a = (AuthorizeConfirmation) s;
+
+            if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
+                try {
+
+                    sendStopTransaction(11000,idtag,ChargePointStatus.Finishing);
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+            }else{
+                Toast.makeText(mcontext,"인증이 되지 않은 사용자입니다. ",Toast.LENGTH_LONG).show();
+            }
+
+
         });
     }
 
@@ -230,6 +293,7 @@ public class JsonClient {
 
             mcontext.sendBroadcast(intent);
 
+
         } );
 
     }
@@ -249,24 +313,107 @@ public class JsonClient {
 
 
         // Use the feature profile to help create event
-        Request request = core.createStartTransactionRequest(Connectorid,idTag,meterstart,ZonedDateTime.now(ZoneId.of("Asia/Seoul")));
+        Request request = null;
+        
+        try{
+            request = core.createStartTransactionRequest(Connectorid,idTag,meterstart, ZonedDateTime.now(ZoneId.of("Asia/Seoul")));
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
 
         // Client returns a promise which will be filled once it receives a confirmation.
         client.send(request).whenComplete((s, ex) -> {
             Log.d(tag,"StartTransaction receive : "+s);
+            Log.d(tag,"StartTransaction receive err : "+ex);
+
+            StartTransactionConfirmation a = (StartTransactionConfirmation) s;
+
+            if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
+                Intent intent = new Intent("Start_Charging");       // 충전시작
+                mcontext.sendBroadcast(intent);
+//                client.disconnect();
+            }else{
+                Toast.makeText(mcontext,"서버에서 충전을 거부하였습니다.",Toast.LENGTH_LONG).show();      // 거부되었을때 다시 통신시도해야함 (22p).
+
+                if(TransactionStartMessageAttempts<2){           // 거부되었을때 2번정도 다시보냄
+                    TransactionStartMessageAttempts++;
+                    try {
+                        Thread.sleep(10000);
+
+                        sendStartTransaction(Connectorid,idTag,meterstart);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }else{
+                    TransactionStartMessageAttempts = 0;
+                    Intent intent = new Intent("Start_Charging");       // 충전시작
+                    mcontext.sendBroadcast(intent);
+//                    client.disconnect();
+                }
+
+            }
+
         });
     }
 
-    public void sendStopTransaction(String idTag,int meterstop,int transactionid) throws Exception {
+    public void sendStopTransaction(int meterstop,int transactionid,ChargePointStatus chargePointStatus) throws Exception {
+//        SampledValue bbb = new SampledValue("50.0");
+//        bbb.setMeasurand("Frequency");
+//        bbb.setUnit("Wh");
+//        SampledValue[] bbbb = new SampledValue[]{bbb};
+//        MeterValue bb = new MeterValue(ZonedDateTime.now(ZoneId.of("Asia/Seoul")),bbbb);
+//        MeterValue[] b = new MeterValue[]{bb};
+
+
+        Log.d(tag, "date : "+ ZonedDateTime.now(ZoneId.of("Asia/Seoul")));
 
         StopTransactionRequest request = new StopTransactionRequest(meterstop,ZonedDateTime.now(ZoneId.of("Asia/Seoul")),transactionid);
-        request.setIdTag(idTag);
+        request.setReason(Reason.Local);
+
+
+        Log.d(tag, String.valueOf(request));
 
 
         // Client returns a promise which will be filled once it receives a confirmation.
         client.send(request).whenComplete((s, ex) -> {
-            Log.d(tag,"StopTransaction receive : "+s);
+
+            Log.e(tag, String.valueOf(ex));
+
+            StopTransactionConfirmation a = (StopTransactionConfirmation) s;
+
+
+            Intent intent = new Intent("chargeEnd_Receiver");       // 충전중단
+            intent.putExtra("pay_num",String.valueOf(transactionid));
+            intent.putExtra("ChargePointStatus",chargePointStatus);
+            mcontext.sendBroadcast(intent);
+
+
+            if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
+//                client.disconnect();
+            }else{
+                Toast.makeText(mcontext,"서버에서 충전종료를 거부하였습니다.",Toast.LENGTH_LONG).show();      // 거부되었을때 다시 통신시도해야함 (22p).
+
+                if(TransactionStopMessageAttempts<2){           // 거부되었을때 2번정도 다시보냄
+                    TransactionStopMessageAttempts++;
+                    try {
+                        Thread.sleep(10000);
+
+                        sendStopTransaction( meterstop,transactionid,chargePointStatus);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }else{
+                    TransactionStopMessageAttempts = 0;
+                }
+
+            }
+
+
         });
+
+
     }
 
     public void sendDataTransfer(String vendorId,String messageID,String data) throws Exception {
@@ -296,12 +443,23 @@ public class JsonClient {
                         break;
                         
                     case 2: //  결제 정보 insert 성공
-                        client.disconnect();
+//                        client.disconnect();
+                        break;
+
+                    case 3: //  시세 가져오기 성공
+                        JSONObject jsonObject1 = new JSONObject(_data);
+                        float pay = jsonObject1.getInt("Pay");
+
+                        Intent intent = new Intent("Get_Pay");
+                        intent.putExtra("pay",pay);
+                        mcontext.sendBroadcast(intent);
+
+//                        client.disconnect();
                         break;
                         
                     case -1:    // 서버에 규격에 안맞거나 db에 저장이 안되거나 하는 오류  
                         //오류 낫을때 일정기간후 다시 보내거나 따로 log 저장해야함
-                        client.disconnect();
+//                        client.disconnect();
                         break;
 
 
@@ -318,18 +476,25 @@ public class JsonClient {
         });
     }
 
-    public void sendMeterValues(int connectorId,int transactionId, MeterValue meterValue) throws Exception {
+    public void sendMeterValues(int connectorId,int transactionId, String amount) throws Exception {
 
+        SampledValue bbb = new SampledValue(amount);
+//        bbb.setMeasurand("Frequency");
+//        bbb.setUnit("Wh");
+        SampledValue[] bbbb = new SampledValue[]{bbb};
+        MeterValue bb = new MeterValue(ZonedDateTime.now(ZoneId.of("Asia/Seoul")),bbbb);
+        MeterValue[] b = new MeterValue[]{bb};
 
         MeterValuesRequest request = new MeterValuesRequest(connectorId);
         request.setTransactionId(transactionId);
-        request.setMeterValue(new MeterValue[]{meterValue});
+        request.setMeterValue(b);
 
 
 
         // Client returns a promise which will be filled once it receives a confirmation.
         client.send(request).whenComplete((s, ex) -> {
             Log.d(tag,"MeterValues receive : "+s);
+            Log.d(tag,"MeterValues receive : "+ex);
         });
     }
 
@@ -365,12 +530,22 @@ public class JsonClient {
 //        Faulted
 //    }
 
+
+
+    // 권한 부여와 충전 시작,끝 사이에 유효성 충돌이 일어날때도 보내 오류를 알려야함(19p)
+    //이전 OCPP 버전에 정의된 점유 상태 는 더 이상 관련이 없습니다. Occupied 상태 는 준비, 충전 중, SuspendedEV,SuspendedEVSE 및 완료 라는 5가지 새로운 상태로 나뉩니다 (43p)(82p)
+    //전환 횟수를 제한하기 위해 충전 포인트는 선택적 구성 키인 MinimalStatusDuration에 정의된 시간보다 짧은 시간 동안 활성화된 경우 StatusNotification.req 전송을 생략할 수 있습니다 . 이런 방식으로 청구 지점은 특정 StatusNotification.req PDU를 보내지 않도록 선택할 수 있습니다 .(47p)
+
     public void sendStatusNotification(int connectorId,ChargePointErrorCode errorCode, ChargePointStatus status,String info) throws Exception {
 
 
 
         StatusNotificationRequest request = new StatusNotificationRequest(connectorId,errorCode,status);
-        request.setInfo(info);
+
+        if(info !=null){
+            request.setInfo(info);
+        }
+
 
 
 
@@ -378,6 +553,11 @@ public class JsonClient {
         // Client returns a promise which will be filled once it receives a confirmation.
         client.send(request).whenComplete((s, ex) -> {
             Log.d(tag,"StatusNotification receive : "+s);
+            Log.d(tag,"StatusNotification receive : "+ex);
+
+//            if(ex == null){
+//                sendMeterValues();
+//            }
         });
     }
 

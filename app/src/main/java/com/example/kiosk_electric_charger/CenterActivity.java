@@ -49,12 +49,20 @@ import org.json.JSONObject;
 
 import java.io.Console;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import eu.chargetime.ocpp.JSONClient;
+import eu.chargetime.ocpp.model.core.ChargePointErrorCode;
+import eu.chargetime.ocpp.model.core.ChargePointStatus;
+import eu.chargetime.ocpp.model.core.MeterValue;
+import eu.chargetime.ocpp.model.core.SampledValue;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -102,6 +110,12 @@ public class CenterActivity extends AppCompatActivity {
     private int try_cnt = 1;    // 결제 시도 카운터
     //충전량
     private String amount;
+    
+    
+    // 초기 설정값 - preference 에서 가져와야하는 값들
+    private long mv_timer = 60000;  // metervalue 보내는 간격
+    private long hb_timer = 60000;  // heartbeat 보내는 간격
+    
 
 
     ServiceConnection conn = new ServiceConnection() {
@@ -132,16 +146,190 @@ public class CenterActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             boolean timertype = intent.getBooleanExtra("type",false);
+            String pay_num = intent.getStringExtra("pay_num");
+
+            try {
+
+                if(pay_num == null){
+                    if(timertype){
+                        pay_num = viewModel.getLeft_pay_number().getValue();
+                    }else{
+                        pay_num = viewModel.getRight_pay_number().getValue();
+                    }
+                }
+//                mClient.connect();
+
+                mClient.sendStopAuthorize(Integer.parseInt(pay_num));
 
 
-            if(timertype){
-                Stop_left_charge_time();            // 왼쪽 충전 중지
-//                End_Charging_Rtrofit(viewModel.getLeft_pay_number().getValue());
-            }else{
-                Stop_right_charge_time();           // 오른쪽 충전 중지
-//                End_Charging_Rtrofit(viewModel.getRight_pay_number().getValue());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
 
+
+
+
+        }
+    };
+
+
+    //충전 중지
+    private final BroadcastReceiver chargeEndReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String pay_num = intent.getStringExtra("pay_num");
+            ChargePointStatus chargepointstatus = (ChargePointStatus) intent.getSerializableExtra("ChargePointStatus");
+
+            if(viewModel.getLeft_pay_number().getValue().equals(pay_num)){
+                Stop_left_charge_time();            // 왼쪽 충전 중지
+                Stop_mv_l_thread();                 // metervalue 중지
+                try {
+//                    mClient.connect();
+                    mClient.sendStatusNotification(1, ChargePointErrorCode.NoError, chargepointstatus,null);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }else{
+                Stop_right_charge_time();           // 오른쪽 충전 중지}
+                Stop_mv_r_thread();                  // metervalue 중지
+                try {
+//                    mClient.connect();
+                    mClient.sendStatusNotification(2, ChargePointErrorCode.NoError, chargepointstatus,null);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+
+
+        }
+    };
+
+
+    // 충전 권한 획득
+    private final BroadcastReceiver authorize_Receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            Log.d(tag," authorize_Receiver ");
+
+            try {
+                int connector;
+                String itag;
+
+                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+                    connector = 1;                                                          // 충전기커넥터 id
+                    itag = viewModel.getLeft_pay_number().getValue();                       // 결제 번호
+                }else{                                                                      // 오른쪽결제 일때
+                    connector = 2;                                                          // 충전기커넥터 id
+                    itag = viewModel.getRight_pay_number().getValue();
+                }
+
+
+//                mClient.connect();
+                mClient.sendStartTransaction(connector,itag,11000);
+
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+
+
+        }
+    };
+
+    // 충전시작
+    private final BroadcastReceiver startChargingReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+//            int com_con = intent.getIntExtra("connector_id",10);
+            int connector;
+
+            Log.d(tag," startChargingReceiver ");
+
+            try {
+
+                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+                    connector = 1;
+                    viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
+                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
+                    Start_left_charge_time();                                               // 타이머 시작
+                    Start_mv_l_thread(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));                                                    // metervalue
+                }else{                                                                      // 오른쪽결제 일때
+                    connector = 2;
+                    viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
+                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
+                    Start_right_charge_time();                                               // 타이머 시작
+                    Start_mv_r_thread(Integer.parseInt(viewModel.getRight_pay_number().getValue()));                                                    // metervalue
+                }
+
+                mClient.sendStatusNotification(connector, ChargePointErrorCode.NoError, ChargePointStatus.Charging,null);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+
+
+
+        }
+    };
+
+
+
+    // 충전시작 리모트
+
+    private final BroadcastReceiver remote_Start_Charge_Receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            int com_con = intent.getIntExtra("connector_id",10);
+
+            Log.d(tag," startChargingReceiver ");
+
+
+
+            try {
+                if(com_con == 1){
+                    if(Boolean.FALSE.equals(viewModel.getleft_device_charging().getValue())){   // 충전중이 아닐경우
+                        if(viewModel.getLeft_pay_number().getValue() == null){
+                            viewModel.getLeft_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
+                        }
+                        mClient.sendAuthorize(viewModel.getLeft_pay_number().getValue());
+                    }
+
+                }else{
+
+                    if(Boolean.FALSE.equals(viewModel.getright_device_charging().getValue())){        // 충전중이 아닐경우
+                        if(viewModel.getRight_pay_number().getValue() == null){
+                            viewModel.getRight_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
+                        }
+                        mClient.sendAuthorize(viewModel.getRight_pay_number().getValue());
+                    }
+
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+
+        }
+    };
+
+
+    // 전기 시세값 저장
+    private final BroadcastReceiver g_pay_Receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            float timertype = intent.getFloatExtra("pay",0.f);
+
+            if(!(timertype == 0)){
+                viewModel.getPayPrice().setValue(timertype);
+            }else{
+                Toast.makeText(getApplicationContext(),"값을 불러오는데 오류가 생겼습니다.",Toast.LENGTH_LONG).show();
+            }
 
         }
     };
@@ -152,6 +340,7 @@ public class CenterActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
 
+
             int page = intent.getIntExtra("page",0);
             Log.d(tag,"pageReceiver");
             ResetAD_Show();         // 광고 대기시간 초기화
@@ -161,32 +350,34 @@ public class CenterActivity extends AppCompatActivity {
                     // 가격 입력 페이지
                 case PageAddrModel.InputPayFgm_r:       // inputpay fragment 일때 서버에서 가격 단가 받아오기
                 case PageAddrModel.InputPayFgm_l:
-                    retrofitService.getPay().enqueue(new Callback<Retrofit_PayModel>() {
-                        @Override
-                        public void onResponse(Call<Retrofit_PayModel> call, Response<Retrofit_PayModel> response) {
-                            if(response.isSuccessful()){
-                                Retrofit_PayModel retrofitPayModel = response.body();
 
-                                viewModel.getPayPrice().setValue(retrofitPayModel.getPay());
+                    try {
+//                        mClient.connect();
+                        mClient.sendDataTransfer(DeviceModel.getDevicevendor(),DataTransferModel.getG_Pay(),null);      // 단가 받아오기
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
 
-                                Log.d("success getPay()",String.valueOf(retrofitPayModel.getPay()));
-                            }
-                        }
-                        @Override
-                        public void onFailure(Call<Retrofit_PayModel> call, Throwable t) {
-                            Log.d("fail",t.getMessage());
-                        }
-                    });
                     break;
 
                     //결제페이지
                 case PageAddrModel.PayFgm_r:
 
-                    new Handler().postDelayed(() -> {
-                        viewModel.getright_device_charging().setValue(true);
-                        mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);
-                        Start_right_charge_time();
-                    },2500);
+                    //결제 유형에 따른 결제 명령
+                    switch (viewModel.getCard_read_state().getValue()){
+                        case CardStateModel.NFC_IC_State:
+                            amount = String.valueOf(viewModel.getright_pre_charge_amount().getValue());
+                            Request_IC_Pay(String.valueOf(viewModel.getright_payValue().getValue()));
+                            break;
+                        case CardStateModel.BarCode_STATE:
+                            amount = String.valueOf(viewModel.getright_pre_charge_amount().getValue());
+                            Request_Read_Qr();
+                            break;
+                        case CardStateModel.RFID_STATE:
+                            amount = String.valueOf(viewModel.getright_pre_charge_amount().getValue());
+                            Request_Read_RFID();
+                            break;
+                    }
                     break;
                 case PageAddrModel.PayFgm_l:
 
@@ -234,7 +425,8 @@ public class CenterActivity extends AppCompatActivity {
     private void Request_IC_Pay(String pay){
         String senddata = "";
         final char fs = PayInfoModel.fs;
-        senddata = PayInfoModel.pay_select_apply + fs + PayInfoModel.pay_category + fs + PayInfoModel.pay_WCC + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs + fs + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+//        senddata = PayInfoModel.pay_select_apply + fs + PayInfoModel.pay_category + fs + PayInfoModel.pay_WCC + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + "7283730001" + fs + fs + fs + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        senddata = "0300" + fs + "10" + fs + "I" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs  + fs + fs + fs + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
         Intent intent = new Intent();
         intent.setAction("NICEVCAT");
         intent.putExtra("NVCATSENDDATA",senddata);
@@ -242,15 +434,19 @@ public class CenterActivity extends AppCompatActivity {
         startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CODE);
     }
 
-    //POS에서 NVCAT으로 승인요청결제 취소 요청
-    private void Request_IC_Cancle_Pay(String pay){
+    //POS에서 NVCAT으로 승인요청결제 취소 요청    - 신용카드 확인, 체크 x
+    private void Request_IC_Cancle_Pay(String pay,String cancle_pay_num,String cancle_pay_day,String cancle_pay_token,String origin_pay){
         String senddata = "";
+        String origin_pay_c = String.format("P%012d",Integer.parseInt(origin_pay));
         final char fs = PayInfoModel.fs;
-        String cancle_pay_num = "11283808";
-        String cancle_pay_day = "231212";
-        senddata = "0420" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs +cancle_pay_num+ fs +cancle_pay_day + fs + PayInfoModel.pay_apprtid + fs + fs + fs +"NS231212112838D33115"+  fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs +"P000000001500"+ fs + "PCL" + fs + PayInfoModel.pay_devicegb + fs  + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+//        String cancle_pay_num = "15132936";
+//        String cancle_pay_day = "240102";
+//        String cancle_pay_token = "NS240102151321D03953";
+//        senddata = "0420" + fs + "10" + fs + "N" + fs +pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs +cancle_pay_num+ fs +cancle_pay_day + fs + "7283730001" + fs + fs + fs +cancle_pay_token+  fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs +"P000000001500"+ fs + "PCL" + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        senddata = "0520" + fs + "10" + fs + "N" + fs +pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs +cancle_pay_num+ fs +cancle_pay_day + fs +  fs + fs + fs +cancle_pay_token+  fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs +origin_pay_c+ fs + "PCL" + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
         Intent intent = new Intent();
         intent.setAction("NICEVCAT");
+//        intent.setAction("ReqNoCardCnl2");
         intent.putExtra("NVCATSENDDATA",senddata);
         intent.setType("text/plain");
         startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CODE);
@@ -266,10 +462,25 @@ public class CenterActivity extends AppCompatActivity {
     }
 
     //POS에서 NVCAT으로 QR결제 요청
+    private void Request_QR_Cancle_Pay(String pay,String QR_code,String origin_pay){
+        String senddata = "";
+        String cancle_pay_num = "11020612";
+        String cancle_pay_day = "240103";
+        String origin_pay_c = String.format("P%012d", Integer.parseInt(origin_pay));
+        final char fs = PayInfoModel.fs;
+        senddata = "0520" + fs + PayInfoModel.pay_category + fs + "N" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs +cancle_pay_num+ fs +cancle_pay_day+ fs + fs + fs + fs + QR_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs +origin_pay_c+ fs + "PCL" + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        Intent intent = new Intent();
+        intent.setAction("NICEVCAT");
+        intent.putExtra("NVCATSENDDATA",senddata);
+        intent.setType("text/plain");
+        startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CODE);
+    }
+
+    //POS에서 NVCAT으로 QR결제 요청
     private void Request_QR_Pay(String pay,String QR_code){
         String senddata = "";
         final char fs = PayInfoModel.fs;
-        senddata = "0300" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs + fs + QR_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        senddata = "0300" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + fs + fs + fs + QR_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
         Intent intent = new Intent();
         intent.setAction("NICEVCAT");
         intent.putExtra("NVCATSENDDATA",senddata);
@@ -291,7 +502,8 @@ public class CenterActivity extends AppCompatActivity {
     private void Request_RFID_Pay(String pay,String RFID_code){
         String senddata = "";
         final char fs = PayInfoModel.fs;
-        senddata = "0300" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs + fs + RFID_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+//        senddata = "0300" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs + fs + RFID_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
+        senddata = "0300" + fs + PayInfoModel.pay_category + fs + "L" + fs + pay + fs + PayInfoModel.pay_bugase + fs + PayInfoModel.pay_bongsa + fs + PayInfoModel.installments + fs + fs + fs + "7283730001" + fs + fs + fs + RFID_code + fs + PayInfoModel.pay_myunse + fs + fs + fs + PayInfoModel.pay_prvnum + fs + fs + fs + PayInfoModel.pay_txt + fs + PayInfoModel.pay_devicegb + fs + fs + fs + fs + fs + fs + fs + fs + fs + fs;
         Intent intent = new Intent();
         intent.setAction("NICEVCAT");
         intent.putExtra("NVCATSENDDATA",senddata);
@@ -300,49 +512,47 @@ public class CenterActivity extends AppCompatActivity {
     }
 
     //POS에서 NVCAT으로 현금 iC 결제 요청
-    private void Request_Pay_Pay(String pay){
-        String senddata = "";
-        final char fs = PayInfoModel.fs;
-
-        String cancle_select = "0200";
-        String cancle_category = "I1";
-        String cancle_segum = "000000000";
-        String cancle_type = "01";
-        String cancle_pay_num = "10481452";
-        String cancle_pay_day = "231205";
-
-
-        senddata = cancle_select + fs + cancle_category + fs +  fs + pay + fs + cancle_segum + fs + "000000000" + fs + cancle_type + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs;
-
-        Intent intent = new Intent();
-        intent.setAction("NICEVCAT");
-        intent.putExtra("NVCATSENDDATA",senddata);
-        intent.setType("text/plain");
-        startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CANCLE);
-    }
+//    private void Request_Pay_Pay(String pay){
+//        String senddata = "";
+//        final char fs = PayInfoModel.fs;
+//
+//        String cancle_select = "0200";
+//        String cancle_category = "I1";
+//        String cancle_segum = "000000000";
+//        String cancle_type = "01";
+//
+//
+//        senddata = cancle_select + fs + cancle_category + fs +  fs + pay + fs + cancle_segum + fs + "000000000" + fs + cancle_type + fs + fs + fs + PayInfoModel.pay_apprtid + fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs;
+//
+//        Intent intent = new Intent();
+//        intent.setAction("NICEVCAT");
+//        intent.putExtra("NVCATSENDDATA",senddata);
+//        intent.setType("text/plain");
+//        startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CANCLE);
+//    }
 
 
     //POS에서 NVCAT으로 현금 IC 결제 취소 요청
-    private void Request_Pay_Cancle(String pay){
-        String senddata = "";
-        final char fs = PayInfoModel.fs;
-
-        String cancle_select = "0420";
-        String cancle_category = "I4";
-        String cancle_segum = "000000000";
-        String cancle_type = "02";
-        String cancle_pay_num = "00028901";
-        String cancle_pay_day = "231206";
-
-
-        senddata = cancle_select + fs + cancle_category + fs +  fs + pay + fs + cancle_segum + fs + "000000000" + fs + cancle_type + fs + cancle_pay_num + fs + cancle_pay_day + fs + PayInfoModel.pay_apprtid + fs +"123"+ fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs;
-
-        Intent intent = new Intent();
-        intent.setAction("NICEVCAT");
-        intent.putExtra("NVCATSENDDATA",senddata);
-        intent.setType("text/plain");
-        startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CANCLE);
-    }
+//    private void Request_Pay_Cancle(String pay){
+//        String senddata = "";
+//        final char fs = PayInfoModel.fs;
+//
+//        String cancle_select = "0420";
+//        String cancle_category = "I4";
+//        String cancle_segum = "000000000";
+//        String cancle_type = "02";
+//        String cancle_pay_num = "00028901";
+//        String cancle_pay_day = "231227";
+//
+//
+//        senddata = cancle_select + fs + cancle_category + fs +  fs + pay + fs + cancle_segum + fs + "000000000" + fs + cancle_type + fs + cancle_pay_num + fs + cancle_pay_day + fs + PayInfoModel.pay_apprtid + fs +"123"+ fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs + fs+ fs;
+//
+//        Intent intent = new Intent();
+//        intent.setAction("NICEVCAT");
+//        intent.putExtra("NVCATSENDDATA",senddata);
+//        intent.setType("text/plain");
+//        startActivityForResult(intent,PayInfoModel.SEND_REQUEST_CANCLE);
+//    }
 
 
 
@@ -418,24 +628,6 @@ public class CenterActivity extends AppCompatActivity {
                     Log.d("pay info",pay_number + " / "+pay_time + " / "+pay_by+" / "+card_num);
 
 
-//                    HashMap<String,String> input = new HashMap<>();
-//                    input.put("Device_Id", DeviceModel.getDeviceid());  // 기기 아이디
-////                    input.put("Charge_amount",amount);  // 충전 량
-//                    if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){
-//                        input.put("Charge_Pay",String.valueOf(viewModel.getleft_payValue().getValue()));    //충전 결제액
-//                    }else{
-//                        input.put("Charge_Pay",String.valueOf(viewModel.getright_payValue().getValue()));    //충전 결제액
-//                    }
-//
-//                    Log.d("CODE RESULT_OK", "Check 1");
-//
-//                    input.put("Pay_By",pay_by);     // 결제 수단    = 카드구분
-//                    input.put("Credit_Num",card_num);   //카드 번호
-//                    input.put("Pay_Num",pay_number);    // 승인 번호
-//                    input.put("Pay_Day",pay_time);  // 결제일
-//
-//                    Log.d("CODE RESULT_OK", "Check 2");
-
 
                     JSONObject jsonObject = new JSONObject();
                     try {
@@ -458,25 +650,12 @@ public class CenterActivity extends AppCompatActivity {
 
 
                     try {
-                        mClient.connect();
-                        mClient.sendDataTransfer(DeviceModel.getDeviceid(), DataTransferModel.getPay(), String.valueOf(jsonObject));
+//                        mClient.connect();
+                        mClient.sendDataTransfer(DeviceModel.getDeviceid(), DataTransferModel.getI_Pay(), String.valueOf(jsonObject));
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
 
-//                    retrofitService.sendPayHistory(input).enqueue(new Callback<ResponseBody>() {
-//                        @Override
-//                        public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {                    // 결제 성공, 통신 성공
-//                            // 성공일때
-//                            Log.d(tag, "SendPayHistory Success");
-//                        }
-//
-//                        @Override
-//                        public void onFailure(Call<ResponseBody> call, Throwable t) {                   // 결제 성공, 통신 실패
-//                            //서버로 안보내졌을때
-//                            Log.d(tag, t.getMessage());
-//                        }
-//                    });
 
                     // 결제 성공
                     try_cnt= 1;
@@ -543,7 +722,7 @@ public class CenterActivity extends AppCompatActivity {
                 if(return_value == -3){
                     Toast.makeText(this,"결제서버와의 통신이 불안정합니다. 다시 시도해주세요.",Toast.LENGTH_LONG).show();
                 } else if(return_value == -7){
-                    Toast.makeText(this,"시간이 지체되었습니다. 처음페이지로 돌아갑니다.",Toast.LENGTH_LONG).show();
+                    Toast.makeText(this,"시간이 지체되었거나 카드리딩에 실패했습니다. 처음페이지로 돌아갑니다.",Toast.LENGTH_LONG).show();
                 }else if(return_value == -12){
                     Toast.makeText(this,"리더기 설정이 되지 않았습니다. 재부팅을 해주세요.",Toast.LENGTH_LONG).show();
                 }else if(return_value == -13){
@@ -579,20 +758,36 @@ public class CenterActivity extends AppCompatActivity {
 
 
                 }else if(return_data.equals("N")){
-                    //안 꽃혀 있는 경우
-                    viewModel.getCard_read_state().setValue(CardStateModel.Pay_Complete);
-                    if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
 
-//                        Start_Charging_Rtrofit(viewModel.getLeft_pay_number().getValue());      // 시작시간 업데이트 보내기
-                        viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
-                        mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
-                        Start_left_charge_time();                                               // 타이머 시작
-                    }else{                                                                      // 오른쪽결제 일때
-                        
-//                        Start_Charging_Rtrofit(viewModel.getRight_pay_number().getValue());      // 시작시간 업데이트 보내기
-                        viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
-                        mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
-                        Start_right_charge_time();                                               // 타이머 시작
+
+
+
+
+                    //안 꽃혀 있는 경우
+//                    viewModel.getCard_read_state().setValue(CardStateModel.Pay_Complete);
+//                    if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+//
+////                        Start_Charging_Rtrofit(viewModel.getLeft_pay_number().getValue());      // 시작시간 업데이트 보내기
+//                        viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
+//                        mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
+//                        Start_left_charge_time();                                               // 타이머 시작
+//                    }else{                                                                      // 오른쪽결제 일때
+//
+////                        Start_Charging_Rtrofit(viewModel.getRight_pay_number().getValue());      // 시작시간 업데이트 보내기
+//                        viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
+//                        mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
+//                        Start_right_charge_time();                                               // 타이머 시작
+//                    }
+
+                    try {
+//                        mClient.connect();
+                        if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){
+                            mClient.sendAuthorize(viewModel.getLeft_pay_number().getValue());
+                        }else{
+                            mClient.sendAuthorize(viewModel.getRight_pay_number().getValue());
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
                     }
 
                     
@@ -834,8 +1029,31 @@ public class CenterActivity extends AppCompatActivity {
         IntentFilter sfilter02 = new IntentFilter();
         sfilter02.addAction("ChargeTimer");
         registerReceiver(chargetimerReceiver,sfilter02);
+        
+        //시세 저장
+        IntentFilter sfilter03 = new IntentFilter();
+        sfilter03.addAction("Get_Pay");
+        registerReceiver(g_pay_Receiver,sfilter03);
 
+        //충전 시작
+        IntentFilter sfilter04 = new IntentFilter();
+        sfilter04.addAction("Start_Charging");
+        registerReceiver(startChargingReceiver,sfilter04);
 
+        //권한
+        IntentFilter sfilter05 = new IntentFilter();
+        sfilter05.addAction("authorize_Receive");
+        registerReceiver(authorize_Receiver,sfilter05);
+
+        //충전 중지
+        IntentFilter sfilter06 = new IntentFilter();
+        sfilter06.addAction("chargeEnd_Receiver");
+        registerReceiver(chargeEndReceiver,sfilter06);
+
+        //충전 시작 리모트
+        IntentFilter sfilter07 = new IntentFilter();
+        sfilter07.addAction("remote_Start_Charge_Receiver");
+        registerReceiver(remote_Start_Charge_Receiver,sfilter07);
 
 
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
@@ -847,42 +1065,94 @@ public class CenterActivity extends AppCompatActivity {
 
 //        Request_IC_Cancle_Pay("500");
 
-//        Request_Pay_Cancle("1000");
+//        Request_Pay_Cancle("500");
 
 //        Request_Pay_Pay("1000");
 
 
+//        Request_IC_Pay("1000");
+
+
+//        Request_RFID_Pay("1000","T00000000001010010182131441");
+
+        Request_QR_Cancle_Pay("500","281006022481454870170612","2000");
+
+
 
         hb_handler = new Handler(Looper.getMainLooper());
+        mv_l_handler = new Handler(Looper.getMainLooper());
+        mv_r_handler = new Handler(Looper.getMainLooper());
+
         mClient = JsonClient.getInstance(getApplicationContext());
 
 
 
 
-        Start_hb_thread();
+//        Start_hb_thread();
 
 
 
     }
 
-    Handler hb_handler;
-    Thread hb_thread;
+    Handler hb_handler; // heartbeat
+    Thread hb_thread; // heartbeat
+
+    Handler mv_l_handler ;  // metervalues - l
+    Thread mv_l_thread;     // metervalues - l
+
+    Handler mv_r_handler ;  // metervalues - r
+    Thread mv_r_thread;     // metervalues - r
+
     public void Start_hb_thread(){
         
 
         hb_thread = new Thread(() -> hb_handler.postDelayed(()->{
             try {
-                mClient.connect();
+//                mClient.connect();
                 mClient.sendHeartBeat();
-                mClient.disconnect();
+//                mClient.disconnect();
 
                 Start_hb_thread();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        },60000));
+        },hb_timer));
 
         hb_thread.start();
+    }
+
+    public void Start_mv_l_thread(int t_id){
+
+        mv_l_thread = new Thread(() -> mv_l_handler.postDelayed(()->{
+            try {
+//                mClient.connect();
+                mClient.sendMeterValues(1,t_id,"22000");
+//                mClient.disconnect();
+
+                Start_mv_l_thread(t_id);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        },mv_timer));
+
+        mv_l_thread.start();
+    }
+
+    public void Start_mv_r_thread(int t_id){
+
+        mv_r_thread = new Thread(() -> mv_r_handler.postDelayed(()->{
+            try {
+//                mClient.connect();
+                mClient.sendMeterValues(2,t_id,"22000");
+//                mClient.disconnect();
+
+                Start_mv_r_thread(t_id);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        },mv_timer));
+
+        mv_r_thread.start();
     }
     
 
@@ -891,6 +1161,22 @@ public class CenterActivity extends AppCompatActivity {
             hb_handler.removeCallbacksAndMessages(null);
             hb_thread.interrupt();
             hb_thread = null;
+        }
+    }
+
+    public void Stop_mv_l_thread() {
+        if (mv_l_thread != null){
+            mv_l_handler.removeCallbacksAndMessages(null);
+            mv_l_thread.interrupt();
+            mv_l_thread = null;
+        }
+    }
+
+    public void Stop_mv_r_thread() {
+        if (mv_r_thread != null){
+            mv_r_handler.removeCallbacksAndMessages(null);
+            mv_r_thread.interrupt();
+            mv_r_thread = null;
         }
     }
 
@@ -951,6 +1237,11 @@ public class CenterActivity extends AppCompatActivity {
 
         unregisterReceiver(pageReceiver);           // 페이지 이동
         unregisterReceiver(chargetimerReceiver);    // 충전 시간
+        unregisterReceiver(g_pay_Receiver);         // 시세 가져오기
+        unregisterReceiver(authorize_Receiver);     // 권한
+        unregisterReceiver(startChargingReceiver);  // 충전 시작
+        unregisterReceiver(chargeEndReceiver);      // 충전 중지
+        unregisterReceiver(remote_Start_Charge_Receiver);   // 충전 시작 리모트
 
         // 핸들러 취소
         adController.Close();
@@ -965,6 +1256,8 @@ public class CenterActivity extends AppCompatActivity {
         }
 
         Stop_hb_thread();               // 하트비트 종료
+        Stop_mv_r_thread();
+        Stop_mv_l_thread();
 
         mClient.disconnect();           // ws 연결 끊고
         mClient = null;
@@ -987,6 +1280,11 @@ public class CenterActivity extends AppCompatActivity {
             public void run() {
                 left_sec ++;
                 viewModel.getleft_charge_time().postValue(String.format("%02d:%02d:%02d", left_sec/3600,left_sec/60, left_sec%60));
+
+                // 예시.
+                viewModel.getleft_charge_amount().setValue((float) (viewModel.getleft_charge_amount().getValue()+0.1)); // 충전량
+                viewModel.getleft_input_pay().setValue((int) (viewModel.getPayPrice().getValue()*viewModel.getleft_charge_amount().getValue())); //결제
+
             }
         };
 

@@ -3,6 +3,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        debug {
+            storeFile file('C:\\Users\\GRACE\\Desktop\\인엽\\어플 관리\\android\\kiosk_electric_charger\\keystore\\dingchang.jks')
+            storePassword 'ztl610'
+            keyAlias 'dingchang'
+            keyPassword 'ztl610'
+        }
+    }
     namespace 'com.example.kiosk_electric_charger'
     compileSdk 33
 
@@ -65,6 +73,7 @@ dependencies {
         exclude group: 'com.github.ChargeTimeEU.Java-OCA-OCPP',module:'v2_0-test'
 //        exclude group: 'com.github.ChargeTimeEU.Java-OCA-OCPP',module:'v1_6-test'
     }
+
 
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:1.1.5"        //NoClassDefFoundError 오류 해결법
 

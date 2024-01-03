@@ -40,39 +40,43 @@ public class AD_Controller {
         // 광고 실행
         
         imageVideoView.releasePlayer();
+        try{            // 광고가 없을경우 에러가 나기 때문에
+            if(imageVideoView.isVideo(adlist.get(i))){
+                imageVideoView.setUrlVideo(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
+                Log.d("v_lenght",i + " - " + "it's playing video");
+            }else{
+                imageVideoView.setUrlImage(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
+            }
 
-        if(imageVideoView.isVideo(adlist.get(i))){
-            imageVideoView.setUrlVideo(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
-            Log.d("v_lenght",i + " - " + "it's playing video");
-        }else{
-            imageVideoView.setUrlImage(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
+
+            // 현재 재생중인 광고 길이 가져와서 딜레이주기
+
+            long delaytime = 5000;
+            if(imageVideoView.isVideo(adlist.get(i))){
+                delaytime = imageVideoView.getVideoLengthToMili(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
+            }
+
+            Log.d("v_lenght",i + " - " + String.valueOf(delaytime));
+
+
+            // 다음 광고 대기
+
+            if(i == adlist.size()-1){
+                i = 0;
+            }else{
+                i++;
+            }
+            Log.d("v_lenght",i + " - " + "save");
+            PrefsHelper.write(PrefsHelper.recent_ad_count_key,i);
+
+
+            // 반복
+
+            mHandler.postDelayed(this::Start_ad,delaytime);
+        }catch (Exception e){
+            e.printStackTrace();
         }
 
-
-        // 현재 재생중인 광고 길이 가져와서 딜레이주기
-
-        long delaytime = 5000;
-        if(imageVideoView.isVideo(adlist.get(i))){
-            delaytime = imageVideoView.getVideoLengthToMili(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
-        }
-
-        Log.d("v_lenght",i + " - " + String.valueOf(delaytime));
-
-
-        // 다음 광고 대기
-        
-        if(i == adlist.size()-1){
-            i = 0;
-        }else{
-            i++;
-        }
-        Log.d("v_lenght",i + " - " + "save");
-        PrefsHelper.write(PrefsHelper.recent_ad_count_key,i);
-
-
-        // 반복
-
-        mHandler.postDelayed(this::Start_ad,delaytime);
 
 
     }
