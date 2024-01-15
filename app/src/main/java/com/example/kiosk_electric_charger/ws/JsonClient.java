@@ -292,7 +292,6 @@ public class JsonClient {
 
         client = new JsonClientTest(core,firmware);
 
-        Log.d(tag,"");
 
         ClientEvents events = new ClientEvents() {
             @Override

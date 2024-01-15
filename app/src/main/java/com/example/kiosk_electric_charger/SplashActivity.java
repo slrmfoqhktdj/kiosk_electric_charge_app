@@ -26,9 +26,7 @@ import com.example.kiosk_electric_charger.filemanage.Filedownload;
 import com.example.kiosk_electric_charger.model.DeviceModel;
 import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_ADModel;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory_Weather;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface_Weather;
 import com.example.kiosk_electric_charger.ws.JsonClient;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -190,136 +188,13 @@ public class SplashActivity extends AppCompatActivity {
 //        dpm.clearDeviceOwnerApp(this.getPackageName());
 
 
-
-
-
-
-
-
-
-
         sendBootNotification();
 
 
-//                        Retrofit_WhetherModel retrofitadModel = response.body();
-//                Log.d(tag,retrofitadModel.getTimestamp());
-//                Log.d(tag,retrofitadModel.getIp());
-//                Log.d(tag,retrofitadModel.getTemp());
-//                Log.d(tag,retrofitadModel.getHumidity());
-//                Log.d(tag,retrofitadModel.getWs());
-//                Log.d(tag,retrofitadModel.getWd());
-//                Log.d(tag,retrofitadModel.getNorth_direction());
-//                Log.d(tag,retrofitadModel.getAtmospheric_pressure());
-//                Log.d(tag,retrofitadModel.getRainfall());
-//                Log.d(tag,retrofitadModel.getVoltage());
-//        null,null,null,null,null,null,null,null,null,null
-
-
-//        HashMap<String,String> input = new HashMap<>();
-//        input.put("timestamp", "");
-//        input.put("ip", "");
-//        input.put("temp", "");
-//        input.put("humidity", "");
-//        input.put("ws", "");
-//        input.put("wd", "");
-//        input.put("north_direction", "");
-//        input.put("atmospheric_pressure", "");
-//        input.put("rainfall", "");
-//        input.put("voltage", "");
-//
-//        JsonObject input2 = new JsonObject();
-//
-//        input2.addProperty("timestamp", "");
-//        input2.addProperty("ip", "");
-//        input2.addProperty("temp", "");
-//        input2.addProperty("humidity", "");
-//        input2.addProperty("ws", "");
-//        input2.addProperty("wd", "");
-//        input2.addProperty("north_direction", "");
-//        input2.addProperty("atmospheric_pressure", "");
-//        input2.addProperty("rainfall", "");
-//        input2.addProperty("voltage", "");
-//
-//
-//
-//
-////
-////
-//        Retrofit_Interface_Weather w_retrofitService = Retrofit_Factory_Weather.create();    // 날씨 API
-//        w_retrofitService.GetWhether("dev_02",input2).enqueue(new Callback<ResponseBody>() {
-//            @Override
-//            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-//
-//                Log.d(tag," aa : = : "+ response.raw().message());
-//                Log.d(tag," aa : = : "+ response.body());
-//                Log.d(tag," aa : = : "+ response.raw());
-//                Log.d(tag," aa : = : "+ response.raw().networkResponse());
-//
-//            }
-//
-//            @Override
-//            public void onFailure(Call<ResponseBody> call, Throwable t) {
-//                Log.d(tag," err : = : "+ t);
-//            }
-//        });
-
-        new Thread(){
-            public void run(){
-                GETFunction("http://54.180.106.155:4465/api/dev_02");
-            }
-        }.start();
-
-
-
     }
 
 
-    public void GETFunction(String mUrl) {
-        try {
-            URL url = new URL(mUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(10000);
-            conn.setDoInput(true);
-            conn.setDoOutput(true);
-
-            OutputStream os = conn.getOutputStream();
-            byte request_data[] = ("{\"ip\":\"\",\n" +
-                                "\"timestamp\":null,\n" +
-                                "\"temp\":\"\",\n" +
-                                "\"humidity\":\"\",\n" +
-                                "\"ws\":\"\",\n" +
-                                "\"wd\":\"\",\n" +
-                                "\"north_direction\":\"\",\n" +
-                                "\"atmospheric_pressure\":\"\",\n" +
-                                "\"rainfall\":\"\",\n" +
-                                "\"voltage\":\"\"}".getBytes("utf-8")).getBytes();
-
-            os.write(request_data);
-            os.close();
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-            StringBuffer sb = new StringBuffer();
-            String result = "";
-            while ((result = br.readLine()) != null){
-                sb.append(result);
-            }
-
-            String returndata = "";
-            returndata = sb.toString();
-
-            Log.e(tag,returndata);
-
 //
-//            return result;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
 
 
 

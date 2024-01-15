@@ -40,9 +40,7 @@ import com.example.kiosk_electric_charger.model.MainViewModel;
 import com.example.kiosk_electric_charger.model.PageAddrModel;
 import com.example.kiosk_electric_charger.model.PayInfoModel;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory_Weather;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
-import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface_Weather;
 import com.example.kiosk_electric_charger.ws.JsonClient;
 
 import org.json.JSONException;
@@ -67,7 +65,6 @@ public class CenterActivity extends AppCompatActivity {
 
     private final Retrofit_Interface s_retrofitService = Retrofit_Factory.create();   // OCPP Server
 
-    private final Retrofit_Interface_Weather w_retrofitService = Retrofit_Factory_Weather.create();    // 날씨 API
 
     private ImageVideoView imageVideoView;
 
