@@ -6,12 +6,21 @@ import android.content.Intent;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.kiosk_electric_charger.CenterActivity;
+import com.example.kiosk_electric_charger.SplashActivity;
+
 public class KioskDeviceAdminReceiver extends DeviceAdminReceiver {
     private static final String TAG = KioskDeviceAdminReceiver.class.getSimpleName();
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Log.i(TAG, "onReceive: " + intent.getAction());
+
+        if(intent.getAction().equals(Intent.ACTION_MY_PACKAGE_REPLACED)){
+            Intent startIntent = new Intent(context, SplashActivity.class);
+            startIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            context.startActivity(startIntent);
+        }
     }
 
     @Override

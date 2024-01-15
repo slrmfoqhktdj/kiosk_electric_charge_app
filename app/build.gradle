@@ -77,4 +77,7 @@ dependencies {
 
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:1.1.5"        //NoClassDefFoundError 오류 해결법
 
+
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.3'    // retrofit 오류 로그보기
+
 }

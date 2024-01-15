@@ -8,6 +8,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -33,7 +34,7 @@ public class ChargeSelectFragment extends Fragment {
 
     TextView charge_select_left_charge_persent_tv,charge_select_left_time_tv,charge_select_left_setting_pay_tv,charge_select_left_input_pay_tv,charge_select_left_charge_amount_tv;
     TextView charge_select_right_charge_persent_tv,charge_select_right_time_tv,charge_select_right_setting_pay_tv,charge_select_right_input_pay_tv,charge_select_right_charge_amount_tv;
-    ConstraintLayout rootcontainer_left_charging,rootcontainer_left_noncharging,rootcontainer_right_charging,rootcontainer_right_noncharging;
+    ConstraintLayout rootcontainer_left_charging,rootcontainer_left_noncharging,rootcontainer_right_charging,rootcontainer_right_noncharging,rootcontainer_left_unablecharging,rootcontainer_right_unablecharging;
     MainViewModel veiwModel;
 
     @Override
@@ -59,6 +60,8 @@ public class ChargeSelectFragment extends Fragment {
         rootcontainer_left_charging = view.findViewById(R.id.charge_select_left_charge_container);              //왼쪽 충전중 일때
         rootcontainer_right_noncharging = view.findViewById(R.id.charge_select_right_notcharge_container);      //오른쪽 충전중 아닐때
         rootcontainer_right_charging = view.findViewById(R.id.charge_select_right_charge_container);            //오른쪽 충전중 일때
+        rootcontainer_left_unablecharging = view.findViewById(R.id.charge_select_left_unable_charge_container);    //왼쪽 사용 중지
+        rootcontainer_right_unablecharging = view.findViewById(R.id.charge_select_right_unable_charge_container);    // 오른쪽 사용 중지
 
         charge_select_left_charge_persent_tv = view.findViewById(R.id.charge_select_left_charge_persent_tv);     // 왼쪽 충전 진행량
         charge_select_left_time_tv = view.findViewById(R.id.charge_select_left_time_tv);                // 왼쪽 충전 시간
@@ -81,26 +84,26 @@ public class ChargeSelectFragment extends Fragment {
         charge_01_btn.setOnClickListener(v -> {
             Intent intent = new Intent("Page");
             intent.putExtra("page", PageAddrModel.PaySelectFgm_l);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 
         charge_02_btn.setOnClickListener(v -> {
             Intent intent = new Intent("Page");
             intent.putExtra("page",PageAddrModel.PaySelectFgm_r);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
         charge_select_left_charge_detail_btn.setOnClickListener(v -> {
             Intent intent = new Intent("Page");
             intent.putExtra("page", PageAddrModel.ChargeInfoFgm_l);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
         charge_select_right_charge_detail_btn.setOnClickListener(v -> {
             Intent intent = new Intent("Page");
             intent.putExtra("page", PageAddrModel.ChargeInfoFgm_r);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 
@@ -162,6 +165,7 @@ public class ChargeSelectFragment extends Fragment {
             if(b){
                 rootcontainer_left_charging.setVisibility(View.VISIBLE);
                 rootcontainer_left_noncharging.setVisibility(View.GONE);
+                rootcontainer_left_unablecharging.setVisibility(View.GONE);
 
                 veiwModel.getleft_charge_persent().observe(getActivity(),left_charge_per);
                 veiwModel.getleft_charge_time().observe(getActivity(),left_charge_time);
@@ -171,6 +175,7 @@ public class ChargeSelectFragment extends Fragment {
             }else{
                 rootcontainer_left_noncharging.setVisibility(View.VISIBLE);
                 rootcontainer_left_charging.setVisibility(View.GONE);
+                rootcontainer_left_unablecharging.setVisibility(View.GONE);
             }
 
         };
@@ -180,6 +185,7 @@ public class ChargeSelectFragment extends Fragment {
             if(b){
                 rootcontainer_right_charging.setVisibility(View.VISIBLE);
                 rootcontainer_right_noncharging.setVisibility(View.GONE);
+                rootcontainer_right_unablecharging.setVisibility(View.GONE);
 
                 veiwModel.getright_charge_persent().observe(getActivity(),right_charge_per);
                 veiwModel.getright_charge_time().observe(getActivity(),right_charge_time);
@@ -189,6 +195,36 @@ public class ChargeSelectFragment extends Fragment {
             }else{
                 rootcontainer_right_noncharging.setVisibility(View.VISIBLE);
                 rootcontainer_right_charging.setVisibility(View.GONE);
+                rootcontainer_right_unablecharging.setVisibility(View.GONE);
+            }
+
+        };
+
+
+        //livedata 사용가능 바뀔시에
+        final Observer<Boolean> left_device_charging_enable = b -> {
+            if(!b){
+                rootcontainer_left_charging.setVisibility(View.GONE);
+                rootcontainer_left_noncharging.setVisibility(View.GONE);
+                rootcontainer_left_unablecharging.setVisibility(View.VISIBLE);
+            }else{
+                rootcontainer_left_noncharging.setVisibility(View.VISIBLE);
+                rootcontainer_left_charging.setVisibility(View.GONE);
+                rootcontainer_left_unablecharging.setVisibility(View.GONE);
+            }
+
+        };
+
+
+        final Observer<Boolean> right_device_charging_enable = b -> {
+            if(!b){
+                rootcontainer_right_charging.setVisibility(View.GONE);
+                rootcontainer_right_noncharging.setVisibility(View.GONE);
+                rootcontainer_right_unablecharging.setVisibility(View.VISIBLE);
+            }else{
+                rootcontainer_right_noncharging.setVisibility(View.VISIBLE);
+                rootcontainer_right_charging.setVisibility(View.GONE);
+                rootcontainer_right_unablecharging.setVisibility(View.GONE);
             }
 
         };
@@ -197,6 +233,8 @@ public class ChargeSelectFragment extends Fragment {
         veiwModel.getleft_device_charging().observe(getActivity(),left_device_charging);
         veiwModel.getright_device_charging().observe(getActivity(),right_device_charging);
 
+        veiwModel.getleft_charge_enable().observe(getActivity(),left_device_charging_enable);
+        veiwModel.getright_charge_enable().observe(getActivity(),right_device_charging_enable);
 
 
 

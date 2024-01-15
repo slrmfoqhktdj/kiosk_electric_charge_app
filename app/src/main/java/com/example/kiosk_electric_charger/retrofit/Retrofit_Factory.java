@@ -1,19 +1,32 @@
 package com.example.kiosk_electric_charger.retrofit;
 
+import android.util.Log;
+
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Retrofit_Factory {
-    private static final String BASE_URL = "http://192.168.0.7:8080/";
+    private static final String BASE_URL = "http://192.168.0.7:8099/";
+
+    private static final OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .build();
+
 
     public static Retrofit_Interface create() {
 
-        // Retrofit 객체 생성
-        Retrofit retrofit = new Retrofit.Builder()
+        return new Retrofit.Builder()
                 .baseUrl(BASE_URL)
+                .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create())
-                .build();
+                .build()
 
-        return retrofit.create(Retrofit_Interface.class);
+                .create(Retrofit_Interface.class);
     }
 }

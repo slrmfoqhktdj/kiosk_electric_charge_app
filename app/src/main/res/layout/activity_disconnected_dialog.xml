@@ -1,33 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:keepScreenOn="true"
+    android:background="#4D000000"
     >
 
-    <!--android:keepScreenOn="true"  = Screen dim 막기 -->
-
     <TextView
+
+        android:text="서버와의 재연결 시도중입니다.\n잠시만 기다려주세요."
+        android:textStyle="bold"
+        android:textSize="20dp"
+        android:gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="충전이 완료되었습니다"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.47" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="충전기를 제자리에 걸어주세요"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
+        app:layout_constraintVertical_bias="0.35"
+
+        app:layout_constraintHeight_default="percent"
+        app:layout_constraintHeight_percent=".6"
+        app:layout_constraintWidth_default="percent"
+        app:layout_constraintWidth_percent=".6"
+        />
+
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.5"
+
+        app:layout_constraintHeight_default="percent"
+        app:layout_constraintHeight_percent=".6"
+        app:layout_constraintWidth_default="percent"
+        app:layout_constraintWidth_percent=".6"
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

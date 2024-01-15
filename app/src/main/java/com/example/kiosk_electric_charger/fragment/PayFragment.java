@@ -13,6 +13,7 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -84,7 +85,7 @@ public class PayFragment extends Fragment {
                 intent.putExtra("page", PageAddrModel.InputPayFgm_r);
             }
 
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 

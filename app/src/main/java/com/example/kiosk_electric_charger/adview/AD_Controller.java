@@ -19,8 +19,11 @@ public class AD_Controller {
 
     private Handler mHandler = new Handler();
 
-    public AD_Controller(ImageVideoView imageVideoView){
+    private Boolean sound = false;
+
+    public AD_Controller(ImageVideoView imageVideoView,Boolean sound){
         this.imageVideoView = imageVideoView;
+        this.sound = sound;
 
         //저장된 리스트 불러오기
         adlist = PrefsHelper.getStringArrayPref(PrefsHelper.ad_url_list_key);
@@ -42,7 +45,7 @@ public class AD_Controller {
         imageVideoView.releasePlayer();
         try{            // 광고가 없을경우 에러가 나기 때문에
             if(imageVideoView.isVideo(adlist.get(i))){
-                imageVideoView.setUrlVideo(PrefsHelper.ad_path+ File.separator+ adlist.get(i));
+                imageVideoView.setUrlVideo(PrefsHelper.ad_path+ File.separator+ adlist.get(i),sound);
                 Log.d("v_lenght",i + " - " + "it's playing video");
             }else{
                 imageVideoView.setUrlImage(PrefsHelper.ad_path+ File.separator+ adlist.get(i));

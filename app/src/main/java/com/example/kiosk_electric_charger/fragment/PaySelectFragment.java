@@ -1,5 +1,7 @@
 package com.example.kiosk_electric_charger.fragment;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 
@@ -7,6 +9,7 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -73,24 +76,26 @@ public class PaySelectFragment extends Fragment {
                 intent.putExtra("page",PageAddrModel.InputPayFgm_r);
             }
 
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 
         pay_code_btn = view.findViewById(R.id.pay_code);
 
         pay_code_btn.setOnClickListener(v -> {
-            Intent intent = new Intent("Page");
+//            Intent intent = new Intent("Page");
+//
+//            veiwModel.getCard_read_state().setValue(CardStateModel.BarCode_STATE);          // 결제유형 저장
+//
+//            if(Type){
+//                intent.putExtra("page",PageAddrModel.InputPayFgm_l);
+//            }else{
+//                intent.putExtra("page",PageAddrModel.InputPayFgm_r);
+//            }
+//
+//            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
 
-            veiwModel.getCard_read_state().setValue(CardStateModel.BarCode_STATE);          // 결제유형 저장
-
-            if(Type){
-                intent.putExtra("page",PageAddrModel.InputPayFgm_l);
-            }else{
-                intent.putExtra("page",PageAddrModel.InputPayFgm_r);
-            }
-
-            getActivity().sendBroadcast(intent);
+            unDevelopment();
         });
 
 
@@ -98,17 +103,19 @@ public class PaySelectFragment extends Fragment {
         pay_rfid_btn = view.findViewById(R.id.pay_rfid);
 
         pay_rfid_btn.setOnClickListener(v -> {
-            Intent intent = new Intent("Page");
+//            Intent intent = new Intent("Page");
+//
+//            veiwModel.getCard_read_state().setValue(CardStateModel.RFID_STATE);          // 결제유형 저장
+//
+//            if(Type){
+//                intent.putExtra("page",PageAddrModel.InputPayFgm_l);
+//            }else{
+//                intent.putExtra("page",PageAddrModel.InputPayFgm_r);
+//            }
+//
+//            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
 
-            veiwModel.getCard_read_state().setValue(CardStateModel.RFID_STATE);          // 결제유형 저장
-
-            if(Type){
-                intent.putExtra("page",PageAddrModel.InputPayFgm_l);
-            }else{
-                intent.putExtra("page",PageAddrModel.InputPayFgm_r);
-            }
-
-            getActivity().sendBroadcast(intent);
+            unDevelopment();
         });
 
         back_btn = view.findViewById(R.id.back_btn);
@@ -118,7 +125,7 @@ public class PaySelectFragment extends Fragment {
 
             Intent intent = new Intent("Page");
             intent.putExtra("page", PageAddrModel.ChargeSelectFgm);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 
@@ -154,5 +161,25 @@ public class PaySelectFragment extends Fragment {
         }
 
         return view;
+    }
+
+
+
+    public void unDevelopment(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        builder.setTitle("미개발").setMessage("개발진행중입니다.");
+
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener(){
+            @Override
+            public void onClick(DialogInterface dialog, int id)
+            {
+                dialog.dismiss();
+            }
+        });
+
+
+        AlertDialog alertDialog = builder.create();
+        alertDialog.show();
     }
 }

@@ -1,42 +1,20 @@
 package com.example.kiosk_electric_charger.adview;
 
 
-import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-import com.example.kiosk_electric_charger.MainActivity;
 import com.example.kiosk_electric_charger.R;
-import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
-import com.example.kiosk_electric_charger.SplashActivity;
-import com.example.kiosk_electric_charger.adview.ImageVideoView;
-import com.example.kiosk_electric_charger.background.Backgound_service;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 
 public class AD_Activity extends AppCompatActivity {
@@ -68,7 +46,8 @@ public class AD_Activity extends AppCompatActivity {
 
         imageVideoView = findViewById(R.id.imageVideoView);
 
-        adController = new AD_Controller(imageVideoView);
+
+        adController = new AD_Controller(imageVideoView,true);
 
 
         imageVideoView.setOnClickListener(v -> {

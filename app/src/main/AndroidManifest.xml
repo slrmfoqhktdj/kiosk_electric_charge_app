@@ -43,6 +43,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Kiosk_electric_charger"
         android:usesCleartextTraffic="true"
+
+
+
         tools:targetApi="n_mr1">
 
         <provider
@@ -66,14 +69,8 @@
             <intent-filter>
                 <action android:name="Show.AD.Activity" />
             </intent-filter>
-        </receiver> <!-- 백 그라운드에서 일정 시간 마다 리시버로 버전 체크해서 업데이트..? -->
-        <receiver
-            android:name=".receiver.UpdateReceiver"
-            android:enabled="true"
-            android:exported="true">
-
-
-        </receiver> <!-- 재시작시 -->
+        </receiver>
+        <!-- 재시작시 -->
         <receiver
             android:name=".receiver.BootCompleteReceiver"
             android:directBootAware="true"
@@ -86,20 +83,11 @@
                 <!-- 재시작시 -->
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <!-- 업데이트 완료 시 -->
-                <!-- <action android:name="android.intent.action.MY_PACKAGE_REPLACED" /> -->
-            </intent-filter>
-        </receiver> <!-- 업데이트 후 다시 켜지게 -->
-        <receiver
-            android:name=".receiver.LauncherReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.example.kiosk_electric_charger.action.START" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-
-                <data android:scheme="package" />
+<!--                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />-->
+<!--                <action android:name="android.intent.action.PACKAGE_REPLACED" />-->
             </intent-filter>
         </receiver>
+        <!-- 업데이트 후 다시 켜지게 -->
         <receiver
             android:name=".receiver.KioskDeviceAdminReceiver"
             android:description="@string/app_name"
@@ -112,37 +100,19 @@
                 />
 
             <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
         </receiver>
 
         <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTask" />
-        <activity
-            android:name=".SecondActivity"
-            android:exported="true" />
-        <activity
             android:name=".adview.AD_Activity"
             android:exported="true" />
         <activity
-            android:name=".activity.Card_Read_Activity"
+            android:name=".activity.Disconnected_OCPP_Server_Dialog"
             android:exported="true" />
         <activity
-            android:name=".activity.Charge_Complete_Activity"
-            android:exported="true" />
-        <activity
-            android:name=".activity.Charge_Conn_Activity"
-            android:exported="true" />
-        <activity
-            android:name=".activity.Charging_Activity"
-            android:exported="true" />
-        <activity
-            android:name=".activity.Expected_Amount_Activity"
-            android:exported="true" />
-        <activity
-            android:name=".activity.Installments_Setting_Activity"
+            android:name=".activity.Update_Loading_Dialog"
             android:exported="true" />
         <activity
             android:name=".CenterActivity"

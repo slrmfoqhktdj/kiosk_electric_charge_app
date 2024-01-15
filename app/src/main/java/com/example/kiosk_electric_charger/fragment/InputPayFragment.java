@@ -9,6 +9,7 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -97,7 +98,7 @@ public class InputPayFragment extends Fragment {
                         intent.putExtra("page", PageAddrModel.PayFgm_r);
                     }
 
-                    getActivity().sendBroadcast(intent);
+                    LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
                 }else{
                     Toast.makeText(getActivity(),"결제금액은 0원이 될 수 없습니다.",Toast.LENGTH_LONG).show();
                 }
@@ -169,7 +170,7 @@ public class InputPayFragment extends Fragment {
                 intent.putExtra("page", PageAddrModel.PaySelectFgm_r);
             }
 
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 

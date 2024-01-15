@@ -11,9 +11,13 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.FieldMap;
 import retrofit2.http.FormUrlEncoded;
+import retrofit2.http.GET;
+import retrofit2.http.Headers;
 import retrofit2.http.POST;
+import retrofit2.http.Path;
 
 public interface Retrofit_Interface {
+
 
     /// 결제
 
@@ -47,10 +51,8 @@ public interface Retrofit_Interface {
 
     //apk 파일 다운
     @FormUrlEncoded
-    @POST("file/apk/operation/1")
-    Call<ResponseBody> downApk(
-            @FieldMap HashMap<String,String> param
-    );
+    @POST("{path}")
+    Call<ResponseBody> downApk(@Path("path") String path,@FieldMap HashMap<String,String> param);
 
     //앱 업데이트 확인
     @FormUrlEncoded
@@ -79,6 +81,7 @@ public interface Retrofit_Interface {
     Call<ResponseBody> sendCEnd(
             @FieldMap HashMap<String,String> param
     );
+
 
 }
 

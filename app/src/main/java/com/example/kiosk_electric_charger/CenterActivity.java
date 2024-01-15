@@ -6,24 +6,24 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
+import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
+import com.example.kiosk_electric_charger.SharedPreferences.model.KeyModel;
 import com.example.kiosk_electric_charger.adapter.SectionPageAdapter;
 import com.example.kiosk_electric_charger.adview.AD_Controller;
 import com.example.kiosk_electric_charger.adview.ImageVideoView;
@@ -39,34 +39,24 @@ import com.example.kiosk_electric_charger.model.DeviceModel;
 import com.example.kiosk_electric_charger.model.MainViewModel;
 import com.example.kiosk_electric_charger.model.PageAddrModel;
 import com.example.kiosk_electric_charger.model.PayInfoModel;
-import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_PayModel;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory_Weather;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface_Weather;
 import com.example.kiosk_electric_charger.ws.JsonClient;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.Console;
 import java.text.SimpleDateFormat;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-import eu.chargetime.ocpp.JSONClient;
+import eu.chargetime.ocpp.model.core.AvailabilityType;
 import eu.chargetime.ocpp.model.core.ChargePointErrorCode;
 import eu.chargetime.ocpp.model.core.ChargePointStatus;
-import eu.chargetime.ocpp.model.core.MeterValue;
-import eu.chargetime.ocpp.model.core.SampledValue;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class CenterActivity extends AppCompatActivity {
 
@@ -75,7 +65,10 @@ public class CenterActivity extends AppCompatActivity {
     private ViewPager mViewPager;
     private SectionPageAdapter adapter = new SectionPageAdapter(getSupportFragmentManager());
 
-    private final Retrofit_Interface retrofitService = Retrofit_Factory.create();
+    private final Retrofit_Interface s_retrofitService = Retrofit_Factory.create();   // OCPP Server
+
+    private final Retrofit_Interface_Weather w_retrofitService = Retrofit_Factory_Weather.create();    // 날씨 API
+
     private ImageVideoView imageVideoView;
 
     private MainViewModel viewModel;
@@ -142,197 +135,476 @@ public class CenterActivity extends AppCompatActivity {
 
 
     // 충전시간
-    private final BroadcastReceiver chargetimerReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            boolean timertype = intent.getBooleanExtra("type",false);
-            String pay_num = intent.getStringExtra("pay_num");
-
-            try {
-
-                if(pay_num == null){
-                    if(timertype){
-                        pay_num = viewModel.getLeft_pay_number().getValue();
-                    }else{
-                        pay_num = viewModel.getRight_pay_number().getValue();
-                    }
-                }
-//                mClient.connect();
-
-                mClient.sendStopAuthorize(Integer.parseInt(pay_num));
-
-
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-
-
-
-        }
-    };
+//    private final BroadcastReceiver chargetimerReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            boolean timertype = intent.getBooleanExtra("type",false);
+//            String pay_num = intent.getStringExtra("pay_num");
+//
+//            try {
+//
+//                if(pay_num == null){
+//                    if(timertype){
+//                        pay_num = viewModel.getLeft_pay_number().getValue();
+//                    }else{
+//                        pay_num = viewModel.getRight_pay_number().getValue();
+//                    }
+//                }
+////                mClient.connect();
+//
+//                mClient.sendStopAuthorize(Integer.parseInt(pay_num));
+//
+//
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//
+//
+//
+//        }
+//    };
 
 
     //충전 중지
-    private final BroadcastReceiver chargeEndReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String pay_num = intent.getStringExtra("pay_num");
-            ChargePointStatus chargepointstatus = (ChargePointStatus) intent.getSerializableExtra("ChargePointStatus");
-
-            if(viewModel.getLeft_pay_number().getValue().equals(pay_num)){
-                Stop_left_charge_time();            // 왼쪽 충전 중지
-                Stop_mv_l_thread();                 // metervalue 중지
-                try {
-//                    mClient.connect();
-                    mClient.sendStatusNotification(1, ChargePointErrorCode.NoError, chargepointstatus,null);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }else{
-                Stop_right_charge_time();           // 오른쪽 충전 중지}
-                Stop_mv_r_thread();                  // metervalue 중지
-                try {
-//                    mClient.connect();
-                    mClient.sendStatusNotification(2, ChargePointErrorCode.NoError, chargepointstatus,null);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-
-
-        }
-    };
+//    private final BroadcastReceiver chargeEndReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            String pay_num = intent.getStringExtra("pay_num");
+//            ChargePointStatus chargepointstatus = (ChargePointStatus) intent.getSerializableExtra("ChargePointStatus");
+//
+//            if(viewModel.getLeft_pay_number().getValue().equals(pay_num)){
+//                Stop_left_charge_time();            // 왼쪽 충전 중지
+//                Stop_mv_l_thread();                 // metervalue 중지
+//                try {
+////                    mClient.connect();
+//                    mClient.sendStatusNotification(1, ChargePointErrorCode.NoError, chargepointstatus,null);
+//                } catch (Exception e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }else{
+//                Stop_right_charge_time();           // 오른쪽 충전 중지}
+//                Stop_mv_r_thread();                  // metervalue 중지
+//                try {
+////                    mClient.connect();
+//                    mClient.sendStatusNotification(2, ChargePointErrorCode.NoError, chargepointstatus,null);
+//                } catch (Exception e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//
+//
+//
+//        }
+//    };
 
 
     // 충전 권한 획득
-    private final BroadcastReceiver authorize_Receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            Log.d(tag," authorize_Receiver ");
-
-            try {
-                int connector;
-                String itag;
-
-                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
-                    connector = 1;                                                          // 충전기커넥터 id
-                    itag = viewModel.getLeft_pay_number().getValue();                       // 결제 번호
-                }else{                                                                      // 오른쪽결제 일때
-                    connector = 2;                                                          // 충전기커넥터 id
-                    itag = viewModel.getRight_pay_number().getValue();
-                }
-
-
-//                mClient.connect();
-                mClient.sendStartTransaction(connector,itag,11000);
-
-
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-
-
-        }
-    };
+//    private final BroadcastReceiver authorize_Receiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//
+//            Log.d(tag," authorize_Receiver ");
+//
+//            try {
+//                int connector;
+//                String itag;
+//
+//                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+//                    connector = 1;                                                          // 충전기커넥터 id
+//                    itag = viewModel.getLeft_pay_number().getValue();                       // 결제 번호
+//                }else{                                                                      // 오른쪽결제 일때
+//                    connector = 2;                                                          // 충전기커넥터 id
+//                    itag = viewModel.getRight_pay_number().getValue();
+//                }
+//
+//
+////                mClient.connect();
+//                mClient.sendStartTransaction(connector,itag,11000);
+//
+//
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//
+//
+//        }
+//    };
 
     // 충전시작
-    private final BroadcastReceiver startChargingReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-//            int com_con = intent.getIntExtra("connector_id",10);
-            int connector;
-
-            Log.d(tag," startChargingReceiver ");
-
-            try {
-
-                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
-                    connector = 1;
-                    viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
-                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
-                    Start_left_charge_time();                                               // 타이머 시작
-                    Start_mv_l_thread(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));                                                    // metervalue
-                }else{                                                                      // 오른쪽결제 일때
-                    connector = 2;
-                    viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
-                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
-                    Start_right_charge_time();                                               // 타이머 시작
-                    Start_mv_r_thread(Integer.parseInt(viewModel.getRight_pay_number().getValue()));                                                    // metervalue
-                }
-
-                mClient.sendStatusNotification(connector, ChargePointErrorCode.NoError, ChargePointStatus.Charging,null);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-
-
-
-        }
-    };
+//    private final BroadcastReceiver startChargingReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//
+////            int com_con = intent.getIntExtra("connector_id",10);
+//            int connector;
+//
+//            Log.d(tag," startChargingReceiver ");
+//
+//            try {
+//
+//                if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+//                    connector = 1;
+//                    viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
+//                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
+//                    Start_left_charge_time();                                               // 타이머 시작
+//                    Start_mv_l_thread(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));                                                    // metervalue
+//                }else{                                                                      // 오른쪽결제 일때
+//                    connector = 2;
+//                    viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
+//                    mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
+//                    Start_right_charge_time();                                               // 타이머 시작
+//                    Start_mv_r_thread(Integer.parseInt(viewModel.getRight_pay_number().getValue()));                                                    // metervalue
+//                }
+//
+//                mClient.sendStatusNotification(connector, ChargePointErrorCode.NoError, ChargePointStatus.Charging,null);
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//
+//
+//
+//        }
+//    };
 
 
 
     // 충전시작 리모트
 
-    private final BroadcastReceiver remote_Start_Charge_Receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-
-            int com_con = intent.getIntExtra("connector_id",10);
-
-            Log.d(tag," startChargingReceiver ");
-
-
-
-            try {
-                if(com_con == 1){
-                    if(Boolean.FALSE.equals(viewModel.getleft_device_charging().getValue())){   // 충전중이 아닐경우
-                        if(viewModel.getLeft_pay_number().getValue() == null){
-                            viewModel.getLeft_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
-                        }
-                        mClient.sendAuthorize(viewModel.getLeft_pay_number().getValue());
-                    }
-
-                }else{
-
-                    if(Boolean.FALSE.equals(viewModel.getright_device_charging().getValue())){        // 충전중이 아닐경우
-                        if(viewModel.getRight_pay_number().getValue() == null){
-                            viewModel.getRight_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
-                        }
-                        mClient.sendAuthorize(viewModel.getRight_pay_number().getValue());
-                    }
-
-                }
-
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-
-        }
-    };
+//    private final BroadcastReceiver remote_Start_Charge_Receiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//
+//            int com_con = intent.getIntExtra("connector_id",10);
+//
+//            Log.d(tag," startChargingReceiver ");
+//
+//
+//
+//            try {
+//                if(com_con == 1){
+//                    if(Boolean.FALSE.equals(viewModel.getleft_device_charging().getValue())){   // 충전중이 아닐경우
+//                        if(viewModel.getLeft_pay_number().getValue() == null){
+//                            viewModel.getLeft_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
+//                        }
+////                        mClient.sendAuthorize(viewModel.getLeft_pay_number().getValue());
+//                        mClient.sendStartTransaction(1,viewModel.getLeft_pay_number().getValue(),11000);
+//                    }
+//
+//                }else{
+//
+//                    if(Boolean.FALSE.equals(viewModel.getright_device_charging().getValue())){        // 충전중이 아닐경우
+//                        if(viewModel.getRight_pay_number().getValue() == null){
+//                            viewModel.getRight_pay_number().setValue(String.valueOf(ThreadLocalRandom.current().nextInt(100000000, 1000000000)));  // 페이 넘버 없으면 생성
+//                        }
+////                        mClient.sendAuthorize(viewModel.getRight_pay_number().getValue());
+//                        mClient.sendStartTransaction(2,viewModel.getRight_pay_number().getValue(),11000);
+//                    }
+//
+//                }
+//
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//
+//        }
+//    };
 
 
     // 전기 시세값 저장
-    private final BroadcastReceiver g_pay_Receiver = new BroadcastReceiver() {
+//    private final BroadcastReceiver g_pay_Receiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            float timertype = intent.getFloatExtra("pay",0.f);
+//
+//            if(!(timertype == 0)){
+//                viewModel.getPayPrice().setValue(timertype);
+//            }else{
+//                Toast.makeText(getApplicationContext(),"값을 불러오는데 오류가 생겼습니다.",Toast.LENGTH_LONG).show();
+//            }
+//
+//        }
+//    };
+
+
+    private final BroadcastReceiver ChargingReceiver = new BroadcastReceiver() {
+        
         @Override
         public void onReceive(Context context, Intent intent) {
-            float timertype = intent.getFloatExtra("pay",0.f);
+            switch(intent.getAction()){
+                case "ChargeTimer":         //충전시간
 
-            if(!(timertype == 0)){
-                viewModel.getPayPrice().setValue(timertype);
-            }else{
-                Toast.makeText(getApplicationContext(),"값을 불러오는데 오류가 생겼습니다.",Toast.LENGTH_LONG).show();
+                    boolean timertype = intent.getBooleanExtra("type",false);
+                    String pay_num = intent.getStringExtra("pay_num");
+
+                    try {
+
+                        if(pay_num == null){
+                            if(timertype){
+                                pay_num = viewModel.getLeft_pay_number().getValue();
+                            }else{
+                                pay_num = viewModel.getRight_pay_number().getValue();
+                            }
+                        }
+//                mClient.connect();
+
+                        mClient.sendStopAuthorize(Integer.parseInt(pay_num));
+
+
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    
+                    break;
+                case "Get_Pay":     // 전기 시세값 저장
+
+                    float timertype_Get_Pay = intent.getFloatExtra("pay",0.f);
+
+                    if(!(timertype_Get_Pay == 0)){
+                        viewModel.getPayPrice().setValue(timertype_Get_Pay);
+                    }else{
+                        Toast.makeText(getApplicationContext(),"값을 불러오는데 오류가 생겼습니다.",Toast.LENGTH_LONG).show();
+                    }
+                    
+                    break;
+                case "Start_Charging":          // 충전시작
+
+//                    int com_con = intent.getIntExtra("connector_id",10);
+                    int connector;
+
+                    int get_connect_id = intent.getIntExtra("connect_id",-2);
+
+                    Log.d(tag," startChargingReceiver ");
+
+                    try {
+
+                        if(get_connect_id == -2){
+                            if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+                                connector = 1;
+                                viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
+                                mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
+                                Start_left_charge_time();                                               // 타이머 시작
+                                Start_mv_l_thread(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));                                                    // metervalue
+                            }else{                                                                      // 오른쪽결제 일때
+                                connector = 2;
+                                viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
+                                mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
+                                Start_right_charge_time();                                               // 타이머 시작
+                                Start_mv_r_thread(Integer.parseInt(viewModel.getRight_pay_number().getValue()));                                                    // metervalue
+                            }
+                        }else{
+                            if(get_connect_id == 1){
+                                connector = 1;
+                                viewModel.getleft_device_charging().setValue(true);                     // 충전중 체크
+                                mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_l);               // 정보 페이지로
+                                Start_left_charge_time();                                               // 타이머 시작
+                                Start_mv_l_thread(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));
+                            }else{
+                                connector = 2;
+                                viewModel.getright_device_charging().setValue(true);                     // 충전중 체크
+                                mViewPager.setCurrentItem(PageAddrModel.ChargeInfoFgm_r);                // 정보 페이지로
+                                Start_right_charge_time();                                               // 타이머 시작
+                                Start_mv_r_thread(Integer.parseInt(viewModel.getRight_pay_number().getValue()));                                                    // metervalue
+                            }
+                        }
+
+
+
+                        mClient.sendStatusNotification(connector, ChargePointErrorCode.NoError, ChargePointStatus.Charging,null);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    
+                    break;
+                case "authorize_Receive":           // 충전 권한 획득
+
+                    Log.d(tag," authorize_Receiver ");
+
+                    try {
+                        int connector_authorize_Receive;
+                        String itag;
+
+                        if(mViewPager.getCurrentItem()<PageAddrModel.ChargeSelectFgm){              // 왼쪽결제 일때
+                            connector_authorize_Receive = 1;                                                          // 충전기커넥터 id
+                            itag = viewModel.getLeft_pay_number().getValue();                       // 결제 번호
+                        }else{                                                                      // 오른쪽결제 일때
+                            connector_authorize_Receive = 2;                                                          // 충전기커넥터 id
+                            itag = viewModel.getRight_pay_number().getValue();
+                        }
+
+
+//                mClient.connect();
+                        mClient.sendStartTransaction(connector_authorize_Receive,itag,11000);
+
+
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    break;
+                case "chargeEnd_Receiver":                  //충전 중지
+
+                    String pay_num_chargeEnd_Receiver = intent.getStringExtra("pay_num");
+                    ChargePointStatus chargepointstatus = (ChargePointStatus) intent.getSerializableExtra("ChargePointStatus");
+
+                    if(viewModel.getLeft_pay_number().getValue().equals(pay_num_chargeEnd_Receiver)){
+                        Stop_left_charge_time();            // 왼쪽 충전 중지
+                        Stop_mv_l_thread();                 // metervalue 중지
+                        try {
+//                    mClient.connect();
+                            mClient.sendStatusNotification(1, ChargePointErrorCode.NoError, chargepointstatus,null);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }else{
+                        Stop_right_charge_time();           // 오른쪽 충전 중지}
+                        Stop_mv_r_thread();                  // metervalue 중지
+                        try {
+//                    mClient.connect();
+                            mClient.sendStatusNotification(2, ChargePointErrorCode.NoError, chargepointstatus,null);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    break;
+                case "remote_Start_Charge_Receiver":          //충전 시작 리모트
+
+                    int com_con = intent.getIntExtra("connector_id",10);
+
+                    Log.d(tag," startChargingReceiver " + com_con);
+                    String ex_num = String.valueOf(ThreadLocalRandom.current().nextLong(100000000, 1000000000));
+                    Log.d(tag," startChargingReceiver 3 " + ex_num);
+
+                    try {
+                        if(com_con == 1){
+                            Log.d(tag," startChargingReceiver 1 " + com_con);
+                            if(Boolean.FALSE.equals(viewModel.getleft_device_charging().getValue())){   // 충전중이 아닐경우
+                                if(viewModel.getLeft_pay_number().getValue().equals("00")){
+                                    viewModel.getLeft_pay_number().setValue(ex_num);  // 페이 넘버 없으면 생성
+                                }
+//                                mClient.sendAuthorize(viewModel.getLeft_pay_number().getValue());       // 지난 pay 기록이 없기때문
+                                mClient.sendStartTransaction(1,ex_num,11000);
+                            }
+
+                        }else{
+                            Log.d(tag," startChargingReceiver 2 " + com_con);
+                            if(Boolean.FALSE.equals(viewModel.getright_device_charging().getValue())){        // 충전중이 아닐경우
+                                if(viewModel.getRight_pay_number().getValue().equals("00")){
+                                    viewModel.getRight_pay_number().setValue(ex_num);  // 페이 넘버 없으면 생성
+                                }
+//                                mClient.sendAuthorize(viewModel.getRight_pay_number().getValue());
+                                mClient.sendStartTransaction(2,ex_num,11000);
+                            }
+
+                        }
+
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+
+
+                    break;
+
+
+                case "reset_Receive":
+
+
+                    if(viewModel.getleft_device_charging().getValue()){
+                        try {
+                            mClient.sendStopAuthorize(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if(viewModel.getright_device_charging().getValue()){
+                        try {
+                            mClient.sendStopAuthorize(Integer.parseInt(viewModel.getRight_pay_number().getValue()));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+
+                    new Handler().postDelayed(() -> {
+                        // 어플 재부팅
+                        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                        pm.reboot(null);
+                    },2000);
+
+
+                    break;
+
+
+                case "changeAvailablitity_Receive":
+
+                    int con = intent.getIntExtra("Connectore_id",10);
+                    AvailabilityType T = (AvailabilityType) intent.getSerializableExtra("Type");
+
+                    if(con == 1){      // 왼쪽 커넥터일 경우
+
+                        
+                        if(T == AvailabilityType.Inoperative){   // 사용중지메시지일 경우
+
+                            if(viewModel.getleft_device_charging().getValue()){ // 충전 중일경우
+                                try {
+                                    mClient.sendStopAuthorize(Integer.parseInt(viewModel.getLeft_pay_number().getValue()));
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            PrefsHelper.write(KeyModel.getLeftChargingEnabled(),false);
+                            //뷰모델 바꾸기
+                            viewModel.getleft_charge_enable().setValue(false);
+
+                        }else if(T == AvailabilityType.Operative){ // 사용가능메시지일 경우
+                            PrefsHelper.write(KeyModel.getLeftChargingEnabled(),true);
+                            //뷰모델 바꾸기
+                            viewModel.getleft_charge_enable().setValue(true);
+                        }
+                    }else if(con == 2){    // 오른쪽 커넥터일 경우
+
+
+
+
+                        if(T == AvailabilityType.Inoperative){   // 사용중지메시지일 경우
+
+
+                            if(viewModel.getright_device_charging().getValue()){        // 충전중일때 취소
+                                try {
+                                    mClient.sendStopAuthorize(Integer.parseInt(viewModel.getRight_pay_number().getValue()));
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            PrefsHelper.write(KeyModel.getRightChargingEnabled(),false);
+                            //뷰모델 바꾸기
+                            viewModel.getright_charge_enable().setValue(false);
+
+                        }else if(T == AvailabilityType.Operative){ // 사용가능메시지일 경우
+                            PrefsHelper.write(KeyModel.getRightChargingEnabled(),true);
+                            //뷰모델 바꾸기
+                            viewModel.getright_charge_enable().setValue(true);
+
+                        }
+                    }
+
+
+
+                    break;
+                    
             }
-
         }
     };
+
+
+
 
 
     // 페이지 이동
@@ -793,6 +1065,7 @@ public class CenterActivity extends AppCompatActivity {
                     
 
                 }else{
+                    Toast.makeText(this,"리더기오류인해 처음페이지로 돌아옵니다.",Toast.LENGTH_LONG).show();
                     Log.e("재시작","재시작 메시지 보내기 성공");
                 }
 
@@ -1018,42 +1291,55 @@ public class CenterActivity extends AppCompatActivity {
         imageVideoView = findViewById(R.id.imageVideoView);
 
 
-        adController = new AD_Controller(imageVideoView);       // 광고 컨트롤러 init
+        adController = new AD_Controller(imageVideoView,false);       // 광고 컨트롤러 init
 
         //페이지 전환
         IntentFilter sfilter01 = new IntentFilter();
         sfilter01.addAction("Page");
-        registerReceiver(pageReceiver,sfilter01);
+        LocalBroadcastManager.getInstance(this).registerReceiver(pageReceiver,sfilter01);
+//        registerReceiver(pageReceiver,sfilter01);
 
-        //충전 타이머
-        IntentFilter sfilter02 = new IntentFilter();
-        sfilter02.addAction("ChargeTimer");
-        registerReceiver(chargetimerReceiver,sfilter02);
-        
-        //시세 저장
-        IntentFilter sfilter03 = new IntentFilter();
-        sfilter03.addAction("Get_Pay");
-        registerReceiver(g_pay_Receiver,sfilter03);
+        IntentFilter chargingFilter = new IntentFilter();
+        chargingFilter.addAction("ChargeTimer");
+        chargingFilter.addAction("Get_Pay");
+        chargingFilter.addAction("Start_Charging");
+        chargingFilter.addAction("authorize_Receive");
+        chargingFilter.addAction("chargeEnd_Receiver");
+        chargingFilter.addAction("remote_Start_Charge_Receiver");
+        chargingFilter.addAction("reset_Receive");
+        chargingFilter.addAction("changeAvailablitity_Receive");
+        LocalBroadcastManager.getInstance(this).registerReceiver(ChargingReceiver,chargingFilter);
 
-        //충전 시작
-        IntentFilter sfilter04 = new IntentFilter();
-        sfilter04.addAction("Start_Charging");
-        registerReceiver(startChargingReceiver,sfilter04);
+//        //충전 타이머
+//        IntentFilter sfilter02 = new IntentFilter();
+//        sfilter02.addAction("ChargeTimer");
+//        registerReceiver(chargetimerReceiver,sfilter02);
+//
+//        //시세 저장
+//        IntentFilter sfilter03 = new IntentFilter();
+//        sfilter03.addAction("Get_Pay");
+//        registerReceiver(g_pay_Receiver,sfilter03);
+//
+//        //충전 시작
+//        IntentFilter sfilter04 = new IntentFilter();
+//        sfilter04.addAction("Start_Charging");
+//        registerReceiver(startChargingReceiver,sfilter04);
+//
+//        //권한
+//        IntentFilter sfilter05 = new IntentFilter();
+//        sfilter05.addAction("authorize_Receive");
+//        registerReceiver(authorize_Receiver,sfilter05);
+//
+//        //충전 중지
+//        IntentFilter sfilter06 = new IntentFilter();
+//        sfilter06.addAction("chargeEnd_Receiver");
+//        registerReceiver(chargeEndReceiver,sfilter06);
+//
+//        //충전 시작 리모트
+//        IntentFilter sfilter07 = new IntentFilter();
+//        sfilter07.addAction("remote_Start_Charge_Receiver");
+//        registerReceiver(remote_Start_Charge_Receiver,sfilter07);
 
-        //권한
-        IntentFilter sfilter05 = new IntentFilter();
-        sfilter05.addAction("authorize_Receive");
-        registerReceiver(authorize_Receiver,sfilter05);
-
-        //충전 중지
-        IntentFilter sfilter06 = new IntentFilter();
-        sfilter06.addAction("chargeEnd_Receiver");
-        registerReceiver(chargeEndReceiver,sfilter06);
-
-        //충전 시작 리모트
-        IntentFilter sfilter07 = new IntentFilter();
-        sfilter07.addAction("remote_Start_Charge_Receiver");
-        registerReceiver(remote_Start_Charge_Receiver,sfilter07);
 
 
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
@@ -1075,7 +1361,7 @@ public class CenterActivity extends AppCompatActivity {
 
 //        Request_RFID_Pay("1000","T00000000001010010182131441");
 
-        Request_QR_Cancle_Pay("500","281006022481454870170612","2000");
+//        Request_QR_Cancle_Pay("500","281006022481454870170612","2000");
 
 
 
@@ -1085,10 +1371,50 @@ public class CenterActivity extends AppCompatActivity {
 
         mClient = JsonClient.getInstance(getApplicationContext());
 
-
+        Log.d("버전","1.0.0");
 
 
 //        Start_hb_thread();
+
+//        HashMap<String,String> input = new HashMap<>();
+//        input.put("timestamp", "");
+//        input.put("ip", "");
+//        input.put("temp", "");
+//        input.put("humidity", "");
+//        input.put("ws", "");
+//        input.put("wd", "");
+//        input.put("north_direction", "");
+//        input.put("atmospheric_pressure", "");
+//        input.put("rainfall", "");
+//        input.put("voltage", "");
+
+
+
+
+//        w_retrofitService.GetWhether("dev_02","","","","","","","","","","").enqueue(new Callback<Retrofit_WhetherModel>() {
+//            @Override
+//            public void onResponse(Call<Retrofit_WhetherModel> call, Response<Retrofit_WhetherModel> response) {
+//                Log.d(tag, "retrofit whether : "+String.valueOf(response.body()));
+//
+////                Retrofit_WhetherModel retrofitadModel = response.body();
+////                Log.d(tag,retrofitadModel.getTimestamp());
+////                Log.d(tag,retrofitadModel.getIp());
+////                Log.d(tag,retrofitadModel.getTemp());
+////                Log.d(tag,retrofitadModel.getHumidity());
+////                Log.d(tag,retrofitadModel.getWs());
+////                Log.d(tag,retrofitadModel.getWd());
+////                Log.d(tag,retrofitadModel.getNorth_direction());
+////                Log.d(tag,retrofitadModel.getAtmospheric_pressure());
+////                Log.d(tag,retrofitadModel.getRainfall());
+////                Log.d(tag,retrofitadModel.getVoltage());
+//
+//            }
+//
+//            @Override
+//            public void onFailure(Call<Retrofit_WhetherModel> call, Throwable t) {
+//                Log.d(tag, String.valueOf(t));
+//            }
+//        });
 
 
 
@@ -1235,13 +1561,16 @@ public class CenterActivity extends AppCompatActivity {
 
         Log.e(tag,"onDestroy");
 
-        unregisterReceiver(pageReceiver);           // 페이지 이동
-        unregisterReceiver(chargetimerReceiver);    // 충전 시간
-        unregisterReceiver(g_pay_Receiver);         // 시세 가져오기
-        unregisterReceiver(authorize_Receiver);     // 권한
-        unregisterReceiver(startChargingReceiver);  // 충전 시작
-        unregisterReceiver(chargeEndReceiver);      // 충전 중지
-        unregisterReceiver(remote_Start_Charge_Receiver);   // 충전 시작 리모트
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(pageReceiver);           // 페이지 이동
+//        unregisterReceiver(chargetimerReceiver);    // 충전 시간
+//        unregisterReceiver(g_pay_Receiver);         // 시세 가져오기
+//        unregisterReceiver(authorize_Receiver);     // 권한
+//        unregisterReceiver(startChargingReceiver);  // 충전 시작
+//        unregisterReceiver(chargeEndReceiver);      // 충전 중지
+//        unregisterReceiver(remote_Start_Charge_Receiver);   // 충전 시작 리모트
+
+
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(ChargingReceiver);       // 기능 리시버
 
         // 핸들러 취소
         adController.Close();
@@ -1282,8 +1611,8 @@ public class CenterActivity extends AppCompatActivity {
                 viewModel.getleft_charge_time().postValue(String.format("%02d:%02d:%02d", left_sec/3600,left_sec/60, left_sec%60));
 
                 // 예시.
-                viewModel.getleft_charge_amount().setValue((float) (viewModel.getleft_charge_amount().getValue()+0.1)); // 충전량
-                viewModel.getleft_input_pay().setValue((int) (viewModel.getPayPrice().getValue()*viewModel.getleft_charge_amount().getValue())); //결제
+                viewModel.getleft_charge_amount().postValue((float) (viewModel.getleft_charge_amount().getValue()+0.1)); // 충전량
+                viewModel.getleft_input_pay().postValue((int) (viewModel.getPayPrice().getValue()*viewModel.getleft_charge_amount().getValue())); //결제
 
             }
         };

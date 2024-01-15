@@ -1,15 +1,11 @@
 package com.example.kiosk_electric_charger.receiver;
 
 
-import static android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP;
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.widget.Toast;
 
-import com.example.kiosk_electric_charger.MainActivity;
 import com.example.kiosk_electric_charger.adview.AD_Activity;
 
 import java.util.Objects;

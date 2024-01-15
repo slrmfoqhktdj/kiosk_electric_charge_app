@@ -1,20 +1,13 @@
 package com.example.kiosk_electric_charger.adview;
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.Handler;
 import android.util.AttributeSet;
-import android.util.Log;
-import android.util.TimeUtils;
-import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.VideoView;
 
 import androidx.annotation.Nullable;
@@ -23,11 +16,6 @@ import androidx.constraintlayout.widget.ConstraintSet;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.example.kiosk_electric_charger.MainActivity;
-import com.example.kiosk_electric_charger.R;
-import com.example.kiosk_electric_charger.SplashActivity;
-
-import org.w3c.dom.Text;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -108,7 +96,7 @@ public class ImageVideoView extends ConstraintLayout {
     }
 
     //url이 비디오 형식일 경우
-    public void setUrlVideo(String url) {
+    public void setUrlVideo(String url,Boolean sound) {
         //앞의 진행되던 뷰 지우기
 //        removeAllViews();
 
@@ -121,10 +109,14 @@ public class ImageVideoView extends ConstraintLayout {
 //        addView(videoView);
 
         imageView.setVisibility(View.GONE);
-
         videoView.setVisibility(View.VISIBLE);
         videoView.setVideoURI(Uri.fromFile(new File(url)));
-        videoView.setOnPreparedListener(mp -> mp.start());
+        videoView.setOnPreparedListener(mp -> {
+            if(!sound){
+                mp.setVolume(0,0);
+            }
+            mp.start();
+        });
 
 
 

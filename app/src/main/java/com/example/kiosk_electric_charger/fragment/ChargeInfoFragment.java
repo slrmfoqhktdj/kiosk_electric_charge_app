@@ -9,6 +9,7 @@ import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -73,17 +74,17 @@ public class ChargeInfoFragment extends Fragment {
                 veiwModel.getleft_device_charging().setValue(false);
                 Intent intent = new Intent("ChargeTimer");
                 intent.putExtra("type",true );
-                getActivity().sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
             }else{
                 veiwModel.getright_device_charging().setValue(false);
                 Intent intent = new Intent("ChargeTimer");
                 intent.putExtra("type",false );
-                getActivity().sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
             }
 
             Intent intent = new Intent("Page");
             intent.putExtra("page", PageAddrModel.ChargeSelectFgm);
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
         close_btn = view.findViewById(R.id.close_btn);
@@ -95,7 +96,7 @@ public class ChargeInfoFragment extends Fragment {
                 intent.putExtra("page", PageAddrModel.ChargeSelectFgm);
             }
 
-            getActivity().sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(getActivity()).sendBroadcast(intent);
         });
 
 

@@ -9,10 +9,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.util.Log;
 
-import androidx.core.content.FileProvider;
 
-import com.example.kiosk_electric_charger.receiver.ADReceiver;
-import com.example.kiosk_electric_charger.receiver.LauncherReceiver;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,7 +25,7 @@ import okhttp3.ResponseBody;
 public class Filedownload {
 
 
-    public static boolean unzip(String zipFilePath, String destDir, Context context) {
+    public static boolean unzip(String zipFilePath, String destDir) {
         String apk_name = "";
 
         File dir = new File(destDir);
@@ -148,6 +145,9 @@ public class Filedownload {
 
                 return true;
 
+            }catch (NullPointerException ne){
+                Log.d("download null",String.valueOf(ne));
+                return false;
             } catch (IOException e) {
                 Log.d("download err1", String.valueOf(e));
                 return false;
@@ -170,47 +170,7 @@ public class Filedownload {
 
 
 
-    public static void installPackage2(Context context, InputStream inputStream)
-            throws IOException {
 
-        PackageInstaller packageInstaller = context.getPackageManager().getPackageInstaller();
-        int sessionId = packageInstaller.createSession(new PackageInstaller
-                .SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL));
-        PackageInstaller.Session session = packageInstaller.openSession(sessionId);
-        Log.e("install apk","1");
-        long sizeBytes = 0;
-
-        OutputStream out = null;
-        out = session.openWrite("my_app_session", 0, sizeBytes);
-        Log.e("install apk","2");
-        int total = 0;
-        byte[] buffer = new byte[65536];
-        int c;
-        while ((c = inputStream.read(buffer)) != -1) {
-            total += c;
-            out.write(buffer, 0, c);
-        }
-        Log.e("install apk","3 " + total);
-        session.fsync(out);
-        inputStream.close();
-        out.close();
-
-        session.commit(createIntentSender(context,sessionId));
-
-        Log.e("install apk","4");
-    }
-
-    private static IntentSender createIntentSender(Context context, int sessionId) {
-
-        Log.e("install apk","5");
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                sessionId,
-                new Intent(LauncherReceiver.START_INTENT),
-                PendingIntent.FLAG_IMMUTABLE);
-        Log.e("install apk","6");
-        return pendingIntent.getIntentSender();
-    }
 
 
 

@@ -8,37 +8,57 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 import android.widget.VideoView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.net.ParseException;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
 import com.example.kiosk_electric_charger.filemanage.Filedownload;
-import com.example.kiosk_electric_charger.model.DataTransferModel;
 import com.example.kiosk_electric_charger.model.DeviceModel;
-import com.example.kiosk_electric_charger.receiver.KioskDeviceAdminReceiver;
 import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_ADModel;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory_Weather;
 import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface_Weather;
 import com.example.kiosk_electric_charger.ws.JsonClient;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
+import org.json.JSONException;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import eu.chargetime.ocpp.model.core.RegistrationStatus;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -50,7 +70,7 @@ public class SplashActivity extends AppCompatActivity {
 
     VideoView svv;
 
-    private final Retrofit_Interface retrofitService = Retrofit_Factory.create();
+    private final Retrofit_Interface s_retrofitService = Retrofit_Factory.create();
 
     int downlistlenght = 0;
     int downcomplete = 0;
@@ -98,7 +118,7 @@ public class SplashActivity extends AppCompatActivity {
         //ocpp bootnotification 결과 알림
         IntentFilter sfilter01 = new IntentFilter();
         sfilter01.addAction("BootNotificationBC");
-        registerReceiver(bootNotificationReceiver,sfilter01);
+        LocalBroadcastManager.getInstance(this).registerReceiver(bootNotificationReceiver,sfilter01);
 
         svv = (VideoView) findViewById(R.id.splash_videoview);
 
@@ -152,21 +172,21 @@ public class SplashActivity extends AppCompatActivity {
 
 
 
-        // 관리자 권한 부여 --- 안되는것같기도하고
-        DevicePolicyManager dpm =
-                (DevicePolicyManager)getSystemService(Context.DEVICE_POLICY_SERVICE);
-
-        ComponentName componentName = new ComponentName(this, KioskDeviceAdminReceiver.class);
-
-        if(!dpm.isAdminActive(componentName)){
-            Log.d(tag,"admin No");
-            enableAdmin(componentName);
-        }
-
-        // 소유자 관리자권한 제거
-//        devicePolicyManager.removeActiveAdmin(componentName);
-
-        // 소유자 권한 제거
+//        // 관리자 권한 부여 --- 안되는것같기도하고
+//        DevicePolicyManager dpm =
+//                (DevicePolicyManager)getSystemService(Context.DEVICE_POLICY_SERVICE);
+//
+//        ComponentName componentName = new ComponentName(this, KioskDeviceAdminReceiver.class);
+//
+//        if(!dpm.isAdminActive(componentName)){
+//            Log.d(tag,"admin No");
+//            enableAdmin(componentName);
+//        }
+//
+//        // 소유자 관리자권한 제거
+////        devicePolicyManager.removeActiveAdmin(componentName);
+//
+//        // 소유자 권한 제거
 //        dpm.clearDeviceOwnerApp(this.getPackageName());
 
 
@@ -181,15 +201,134 @@ public class SplashActivity extends AppCompatActivity {
         sendBootNotification();
 
 
+//                        Retrofit_WhetherModel retrofitadModel = response.body();
+//                Log.d(tag,retrofitadModel.getTimestamp());
+//                Log.d(tag,retrofitadModel.getIp());
+//                Log.d(tag,retrofitadModel.getTemp());
+//                Log.d(tag,retrofitadModel.getHumidity());
+//                Log.d(tag,retrofitadModel.getWs());
+//                Log.d(tag,retrofitadModel.getWd());
+//                Log.d(tag,retrofitadModel.getNorth_direction());
+//                Log.d(tag,retrofitadModel.getAtmospheric_pressure());
+//                Log.d(tag,retrofitadModel.getRainfall());
+//                Log.d(tag,retrofitadModel.getVoltage());
+//        null,null,null,null,null,null,null,null,null,null
+
+
+//        HashMap<String,String> input = new HashMap<>();
+//        input.put("timestamp", "");
+//        input.put("ip", "");
+//        input.put("temp", "");
+//        input.put("humidity", "");
+//        input.put("ws", "");
+//        input.put("wd", "");
+//        input.put("north_direction", "");
+//        input.put("atmospheric_pressure", "");
+//        input.put("rainfall", "");
+//        input.put("voltage", "");
+//
+//        JsonObject input2 = new JsonObject();
+//
+//        input2.addProperty("timestamp", "");
+//        input2.addProperty("ip", "");
+//        input2.addProperty("temp", "");
+//        input2.addProperty("humidity", "");
+//        input2.addProperty("ws", "");
+//        input2.addProperty("wd", "");
+//        input2.addProperty("north_direction", "");
+//        input2.addProperty("atmospheric_pressure", "");
+//        input2.addProperty("rainfall", "");
+//        input2.addProperty("voltage", "");
+//
+//
+//
+//
+////
+////
+//        Retrofit_Interface_Weather w_retrofitService = Retrofit_Factory_Weather.create();    // 날씨 API
+//        w_retrofitService.GetWhether("dev_02",input2).enqueue(new Callback<ResponseBody>() {
+//            @Override
+//            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+//
+//                Log.d(tag," aa : = : "+ response.raw().message());
+//                Log.d(tag," aa : = : "+ response.body());
+//                Log.d(tag," aa : = : "+ response.raw());
+//                Log.d(tag," aa : = : "+ response.raw().networkResponse());
+//
+//            }
+//
+//            @Override
+//            public void onFailure(Call<ResponseBody> call, Throwable t) {
+//                Log.d(tag," err : = : "+ t);
+//            }
+//        });
+
+        new Thread(){
+            public void run(){
+                GETFunction("http://54.180.106.155:4465/api/dev_02");
+            }
+        }.start();
+
+
 
     }
+
+
+    public void GETFunction(String mUrl) {
+        try {
+            URL url = new URL(mUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(10000);
+            conn.setDoInput(true);
+            conn.setDoOutput(true);
+
+            OutputStream os = conn.getOutputStream();
+            byte request_data[] = ("{\"ip\":\"\",\n" +
+                                "\"timestamp\":null,\n" +
+                                "\"temp\":\"\",\n" +
+                                "\"humidity\":\"\",\n" +
+                                "\"ws\":\"\",\n" +
+                                "\"wd\":\"\",\n" +
+                                "\"north_direction\":\"\",\n" +
+                                "\"atmospheric_pressure\":\"\",\n" +
+                                "\"rainfall\":\"\",\n" +
+                                "\"voltage\":\"\"}".getBytes("utf-8")).getBytes();
+
+            os.write(request_data);
+            os.close();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+            StringBuffer sb = new StringBuffer();
+            String result = "";
+            while ((result = br.readLine()) != null){
+                sb.append(result);
+            }
+
+            String returndata = "";
+            returndata = sb.toString();
+
+            Log.e(tag,returndata);
+
+//
+//            return result;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+
 
     @Override
     public void onDestroy(){
         super.onDestroy();
         svv.pause();
         svv.stopPlayback();
-        unregisterReceiver(bootNotificationReceiver);    // 부팅
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(bootNotificationReceiver);    // 부팅
 
 //        mClient.disconnect();           // ws 연결 끊고
         mClient = null;
@@ -203,6 +342,8 @@ public class SplashActivity extends AppCompatActivity {
 
         new Thread(()->{
             mClient = JsonClient.getInstance(getApplicationContext());
+
+
             try {
                 mClient.connect();
 //                Log.d(tag,mClient.sendBootNotification());
@@ -210,9 +351,11 @@ public class SplashActivity extends AppCompatActivity {
 //                mClient.disconnect();
 
 
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
 
 
         }).start();
@@ -254,7 +397,7 @@ public class SplashActivity extends AppCompatActivity {
 
 
 
-        retrofitService.getAdList(input).enqueue(new Callback<List<Retrofit_ADModel>>() {
+        s_retrofitService.getAdList(input).enqueue(new Callback<List<Retrofit_ADModel>>() {
             @Override
             public void onResponse(Call<List<Retrofit_ADModel>> call, Response<List<Retrofit_ADModel>> response) {
                 if(response.isSuccessful()){
@@ -331,6 +474,7 @@ public class SplashActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<List<Retrofit_ADModel>> call, Throwable t) {
                 Log.e(tag,"get list fail " + t.getMessage());
+                request_AD_list();      // 다시 시도
             }
         });
     }
@@ -340,7 +484,7 @@ public class SplashActivity extends AppCompatActivity {
         input.put("ad_id",fileName);
 
 
-        retrofitService.downAd(input).enqueue(new Callback<ResponseBody>() {
+        s_retrofitService.downAd(input).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
 

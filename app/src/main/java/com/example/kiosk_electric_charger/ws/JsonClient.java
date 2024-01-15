@@ -1,29 +1,63 @@
 package com.example.kiosk_electric_charger.ws;
 
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.graphics.ColorSpace;
 import android.os.PowerManager;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.example.kiosk_electric_charger.model.DeviceModel;
+import androidx.lifecycle.ViewModel;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
+import com.example.kiosk_electric_charger.SharedPreferences.model.KeyModel;
+import com.example.kiosk_electric_charger.activity.Disconnected_OCPP_Server_Dialog;
+import com.example.kiosk_electric_charger.filemanage.Filedownload;
+import com.example.kiosk_electric_charger.model.DeviceModel;
+import com.example.kiosk_electric_charger.retrofit.Model.Retrofit_VersionModel;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Factory;
+import com.example.kiosk_electric_charger.retrofit.Retrofit_Interface;
+
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import eu.chargetime.ocpp.ClientEvents;
 import eu.chargetime.ocpp.IClientAPI;
 import eu.chargetime.ocpp.feature.profile.ClientCoreEventHandler;
 import eu.chargetime.ocpp.feature.profile.ClientCoreProfile;
+import eu.chargetime.ocpp.feature.profile.ClientFirmwareManagementEventHandler;
+import eu.chargetime.ocpp.feature.profile.ClientFirmwareManagementProfile;
 import eu.chargetime.ocpp.model.Request;
 import eu.chargetime.ocpp.model.core.*;
+import eu.chargetime.ocpp.model.firmware.GetDiagnosticsConfirmation;
+import eu.chargetime.ocpp.model.firmware.GetDiagnosticsRequest;
+import eu.chargetime.ocpp.model.firmware.UpdateFirmwareConfirmation;
+import eu.chargetime.ocpp.model.firmware.UpdateFirmwareRequest;
+import okhttp3.ResponseBody;
+import okhttp3.internal.ws.WebSocketExtensions;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /*
  * ChargeTime.eu - Java-OCA-OCPP
@@ -55,6 +89,8 @@ public class JsonClient {
     private IClientAPI client;
     private ClientCoreProfile core;
 
+    private ClientFirmwareManagementProfile firmware;
+
     private String tag = "JsonClient.java";
 
     private static JsonClient jsonClient = null;
@@ -81,6 +117,47 @@ public class JsonClient {
 
     public void connect() throws Exception {
 
+
+        firmware = new ClientFirmwareManagementProfile(new ClientFirmwareManagementEventHandler() {
+            @Override
+            public GetDiagnosticsConfirmation handleGetDiagnosticsRequest(GetDiagnosticsRequest request) {
+
+                Log.d(tag,"handleGetDiagnosticsRequest : "+request);
+
+                return null;
+            }
+
+            @Override
+            public UpdateFirmwareConfirmation handleUpdateFirmwareRequest(UpdateFirmwareRequest request) {
+
+                Log.d(tag,"handleUpdateFirmwareRequest : "+request);
+
+
+
+
+                // 앱 버전 가져오기
+                String versionName;
+                PackageManager packageManager = mcontext.getPackageManager();
+                try {
+                    PackageInfo packageInfo = packageManager.getPackageInfo(mcontext.getPackageName(), 0);
+                    versionName = packageInfo.versionName;
+                    Log.d(tag,versionName);
+                } catch (PackageManager.NameNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+
+                String[] a = request.getLocation().split("\\$\\$");
+                Log.d(tag,a[0]);
+                Log.d(tag,a[1]);
+
+
+                // 앱 다운로드 프로세스
+                apk_update(versionName,a[0],a[1]);
+
+                return new UpdateFirmwareConfirmation();
+            }
+        });
+
         // The core profile is mandatory
         core = new ClientCoreProfile(new ClientCoreEventHandler() {
 
@@ -101,6 +178,13 @@ public class JsonClient {
                 // ... handle event
 
 
+                Intent intent = new Intent("changeAvailablitity_Receive");
+                intent.putExtra("Connectore_id",request.getConnectorId());
+                intent.putExtra("Type",request.getType());
+                LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
+
+
+
                 return new ChangeAvailabilityConfirmation(AvailabilityStatus.Accepted);
             }
 
@@ -109,6 +193,17 @@ public class JsonClient {
 
                 Log.d(tag,"handleChangeConfigurationRequest : "+request);
                 // ... handle event
+
+                switch (request.getKey()){
+                    case "WebSocketPingInterval":
+                        PrefsHelper.write(request.getKey(),request.getValue());
+                        break;
+
+
+                }
+
+
+
 
                 return null; // returning null means unsupported feature
             }
@@ -146,10 +241,10 @@ public class JsonClient {
                     Intent intent = new Intent("remote_Start_Charge_Receiver");
                     intent.putExtra("connector_id",request.getConnectorId());
 
-                    mcontext.sendBroadcast(intent);
+                    LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
                 }
 
-                return null; // returning null means unsupported feature
+                return new RemoteStartTransactionConfirmation(RemoteStartStopStatus.Accepted); // returning null means unsupported feature
             }
 
             @Override
@@ -160,8 +255,10 @@ public class JsonClient {
 
                 Intent intent = new Intent("ChargeTimer");
                 intent.putExtra("pay_num",request.getTransactionId());
-                mcontext.sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 
+
+                new RemoteStartTransactionConfirmation(RemoteStartStopStatus.Accepted);
                 return null; // returning null means unsupported feature
             }
 
@@ -170,11 +267,12 @@ public class JsonClient {
 
                 Log.d(tag,"handleResetRequest : "+request);
                 // ... handle event
-                // 어플 재부팅
-                PowerManager pm = (PowerManager) mcontext.getSystemService(Context.POWER_SERVICE);
-                pm.reboot(null);
 
-                return null; // returning null means unsupported feature
+                Intent intent = new Intent("reset_Receive");       // 만약 충전중이라면 해제하고 진행
+                LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
+                
+
+                return new ResetConfirmation(ResetStatus.Accepted); // returning null means unsupported feature
             }
 
             @Override
@@ -192,13 +290,37 @@ public class JsonClient {
 //        client = new JSONClient(core);
 
 
-        client = new JsonClientTest(core);
+        client = new JsonClientTest(core,firmware);
+
+        
+
+        ClientEvents events = new ClientEvents() {
+            @Override
+            public void connectionOpened() {
+                Log.e("connecnt err","ConnectOpened");
+            }
+
+            @Override
+            public void connectionClosed() {
+
+
+                client.connect("ws://192.168.0.7:8999/ws", this);
+
+                Log.e("connecnt err","ConnectClosed");
+            }
+        };
+
+
+
+        client.connect("ws://192.168.0.7:8999/ws", events);
 
 
 
 
-        client.connect("ws://192.168.0.7:8999/ws", null);
+
+
     }
+
 
     public void sendAuthorize(String idtag) throws Exception {
 
@@ -213,7 +335,7 @@ public class JsonClient {
 
             if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
                 Intent intent = new Intent("authorize_Receive");       // 권한획득
-                mcontext.sendBroadcast(intent);
+                LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 
             }else{
                 Toast.makeText(mcontext,"허가를 받지않은 기기에서 충전을 시도했습니다.",Toast.LENGTH_LONG).show();
@@ -278,7 +400,6 @@ public class JsonClient {
 //            System.out.println(s);
             Log.d(tag,"BootNotificationConfirm receive : "+s);
 
-
             BootNotificationConfirmation a = (BootNotificationConfirmation) s;
 
 
@@ -291,7 +412,9 @@ public class JsonClient {
                 intent.putExtra("status",false);
             }
 
-            mcontext.sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
+
+
 
 
         } );
@@ -332,7 +455,8 @@ public class JsonClient {
 
             if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
                 Intent intent = new Intent("Start_Charging");       // 충전시작
-                mcontext.sendBroadcast(intent);
+                intent.putExtra("connect_id",Connectorid);
+                LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 //                client.disconnect();
             }else{
                 Toast.makeText(mcontext,"서버에서 충전을 거부하였습니다.",Toast.LENGTH_LONG).show();      // 거부되었을때 다시 통신시도해야함 (22p).
@@ -349,7 +473,7 @@ public class JsonClient {
                 }else{
                     TransactionStartMessageAttempts = 0;
                     Intent intent = new Intent("Start_Charging");       // 충전시작
-                    mcontext.sendBroadcast(intent);
+                    LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 //                    client.disconnect();
                 }
 
@@ -387,7 +511,7 @@ public class JsonClient {
             Intent intent = new Intent("chargeEnd_Receiver");       // 충전중단
             intent.putExtra("pay_num",String.valueOf(transactionid));
             intent.putExtra("ChargePointStatus",chargePointStatus);
-            mcontext.sendBroadcast(intent);
+            LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 
 
             if(a.getIdTagInfo().getStatus() == AuthorizationStatus.Accepted){
@@ -452,7 +576,7 @@ public class JsonClient {
 
                         Intent intent = new Intent("Get_Pay");
                         intent.putExtra("pay",pay);
-                        mcontext.sendBroadcast(intent);
+                        LocalBroadcastManager.getInstance(mcontext).sendBroadcast(intent);
 
 //                        client.disconnect();
                         break;
@@ -567,6 +691,11 @@ public class JsonClient {
         client.disconnect();
     }
 
+    public boolean isClosed(){
+        return client.isClosed();
+    }
+
+
 
 
 //    int downlistlenght = 0;
@@ -634,5 +763,115 @@ public class JsonClient {
 //
 //    }
 
+
+
+    public void apk_update(String versionName,String receive_vn,String path){
+        // 해당 경로에 있는 파일 리스트
+        File file_path = new File(PrefsHelper.apk_path);
+
+        //폴더 없으면 생성
+        if(!file_path.exists()){
+            file_path.mkdirs();
+        }
+
+
+        // 버전이 다르면
+        if(!(versionName.equals(receive_vn))){
+
+            down_Apk_file("new_apk.zip",path);
+
+
+        }
+    }
+
+
+    private void down_Apk_file(String fileName,String path){
+        Log.d(tag,"Path = "+path);
+
+        HashMap<String,String> input = new HashMap<>();
+        input.put("device_id", DeviceModel.getDeviceid());
+
+        File file_path = new File(PrefsHelper.apk_path);
+        List<String> f_list = Arrays.asList(file_path.list());
+
+        for(String a : f_list){
+            Log.d("apk-a",a);
+        }
+
+        Retrofit_Interface s_retrofitService = Retrofit_Factory.create();
+        s_retrofitService.downApk(path,input).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                // 압축파일 다운
+                if(Filedownload.writeResponseBodyToDisk(response.body(),PrefsHelper.apk_path + File.separator+ fileName)){
+                    Log.d("zip down", "if ");
+//                    // 압축 풀기
+                    if(Filedownload.unzip(PrefsHelper.apk_path + File.separator+ fileName,PrefsHelper.apk_path)){
+                        try {
+                            _installPackage(new FileInputStream(new File(PrefsHelper.apk_path + File.separator + "app-release.apk").getPath()));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("download ad fail",t.getMessage());
+            }
+        });
+
+    }
+
+
+    public void _installPackage(InputStream inputStream)
+            throws IOException {
+
+        PackageInstaller packageInstaller = mcontext.getPackageManager().getPackageInstaller();
+        int sessionId = packageInstaller.createSession(new PackageInstaller
+                .SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL));
+        PackageInstaller.Session session = packageInstaller.openSession(sessionId);
+
+        long sizeBytes = 0;
+
+        OutputStream out = null;
+        out = session.openWrite("my_app_session", 0, sizeBytes);
+
+        int total = 0;
+        byte[] buffer = new byte[65536];
+        int c;
+        while ((c = inputStream.read(buffer)) != -1) {
+            total += c;
+            out.write(buffer, 0, c);
+        }
+        session.fsync(out);
+        inputStream.close();
+        out.close();
+
+        session.commit(createIntentSender(mcontext,sessionId));
+
+//        Intent i = new Intent(LauncherReceiver.START_INTENT);
+//        mcontext.sendBroadcast(i);
+
+    }
+
+    private static IntentSender createIntentSender(Context context, int sessionId) {
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                context,
+                sessionId,
+//                new Intent(LauncherReceiver.START_INTENT),
+                new Intent(Intent.ACTION_MY_PACKAGE_REPLACED),
+                PendingIntent.FLAG_IMMUTABLE);
+        return pendingIntent.getIntentSender();
+
+//        Intent intent = context.getPackageManager().getLaunchIntentForPackage("com.example.kiosk_electric_charger");
+//        PendingIntent pendingIntent = PendingIntent.getActivity(
+//                context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+//
+//        return pendingIntent.getIntentSender();
+    }
 
 }

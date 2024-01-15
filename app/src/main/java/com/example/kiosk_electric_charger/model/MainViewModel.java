@@ -3,6 +3,9 @@ package com.example.kiosk_electric_charger.model;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.kiosk_electric_charger.SharedPreferences.PrefsHelper;
+import com.example.kiosk_electric_charger.SharedPreferences.model.KeyModel;
+
 public class MainViewModel extends ViewModel {
 
     private MutableLiveData<Float> payPrice;  // 가격,단가
@@ -31,7 +34,9 @@ public class MainViewModel extends ViewModel {
     private MutableLiveData<Integer> right_input_pay;         //오른쪽 실 결제 비용
     private MutableLiveData<Float> right_charge_amount;    //오른쪽 충전량
 
+    private MutableLiveData<Boolean> left_charge_enable;    //왼쪽 사용가능
 
+    private MutableLiveData<Boolean> right_charge_enable;    //오른쪽 사용가능
 
     //data binding시 필요
     public MutableLiveData<Float> getPayPrice()
@@ -172,5 +177,18 @@ public class MainViewModel extends ViewModel {
     }
 
 
+    public MutableLiveData<Boolean> getleft_charge_enable()
+    {
+        if(left_charge_enable == null)
+            left_charge_enable = new MutableLiveData<>(PrefsHelper.read(KeyModel.getLeftChargingEnabled(),true));
+        return left_charge_enable;
+    }
+
+    public MutableLiveData<Boolean> getright_charge_enable()
+    {
+        if(right_charge_enable == null)
+            right_charge_enable = new MutableLiveData<>(PrefsHelper.read(KeyModel.getRightChargingEnabled(),true));
+        return right_charge_enable;
+    }
 
 }

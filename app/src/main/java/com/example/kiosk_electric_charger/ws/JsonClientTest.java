@@ -1,11 +1,13 @@
 package com.example.kiosk_electric_charger.ws;
 
+import static eu.chargetime.ocpp.JSONConfiguration.CONNECT_TIMEOUT_IN_MS_PARAMETER;
 import static eu.chargetime.ocpp.JSONConfiguration.PING_INTERVAL_PARAMETER;
 
 import com.example.kiosk_electric_charger.model.DeviceModel;
 
 import eu.chargetime.ocpp.*;
 import eu.chargetime.ocpp.feature.profile.ClientCoreProfile;
+import eu.chargetime.ocpp.feature.profile.ClientFirmwareManagementProfile;
 import eu.chargetime.ocpp.feature.profile.Profile;
 import eu.chargetime.ocpp.model.Confirmation;
 import eu.chargetime.ocpp.model.Request;
@@ -30,16 +32,18 @@ public class JsonClientTest implements IClientAPI {
     private final FeatureRepository featureRepository;
     private final Client client;
 
-    public JsonClientTest (ClientCoreProfile coreProfile) {
+    public JsonClientTest (ClientCoreProfile coreProfile, ClientFirmwareManagementProfile firmwareProfile) {
         draftOcppOnly =
                 new Draft_6455(Collections.emptyList(), Collections.singletonList(new Protocol("ocpp1.6")));
         // pingpong 20초 설정
-        transmitter = new WebSocketTransmitter(JSONConfiguration.get().setParameter(PING_INTERVAL_PARAMETER, 20), draftOcppOnly);
+        transmitter = new WebSocketTransmitter(JSONConfiguration.get().setParameter(PING_INTERVAL_PARAMETER, 20).setParameter(CONNECT_TIMEOUT_IN_MS_PARAMETER,0), draftOcppOnly);
         JSONCommunicator communicator = new JSONCommunicator(transmitter);
         featureRepository = new FeatureRepository();
         ISession session = new TestSessionFactory(featureRepository).createSession(communicator);
         client = new Client(session, featureRepository,new PromiseRepository());
         featureRepository.addFeatureProfile(coreProfile);
+        featureRepository.addFeatureProfile(firmwareProfile);
+
 
 
 
@@ -60,6 +64,7 @@ public class JsonClientTest implements IClientAPI {
         String identityUrl = String.format("%s/%s", url, identity);
         client.connect(identityUrl, clientEvents);
     }
+
 
     @Override
     public CompletionStage<Confirmation> send(Request request) throws OccurenceConstraintException, UnsupportedFeatureException {
